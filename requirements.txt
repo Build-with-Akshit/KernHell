@@ -1,0 +1,6 @@
+pytest
+typer[all]
+rich
+playwright
+google-generativeai
+groq
