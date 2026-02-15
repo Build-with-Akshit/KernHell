@@ -59,10 +59,19 @@ def apply_fix(file_path: str, fixed_code: str, stderr: str = "") -> bool:
                 # Unchanged
                 patched_lines.append(code)
             elif marker == '-':
-                # Remove -> Comment out
+                # Remove -> Comment out (Cleaner style)
                 indent = len(code) - len(code.lstrip())
                 indent_str = code[:indent]
-                commented = f"{indent_str}# [KERNHELL-FIX-OLD] {code.strip()}\n"
+                content = code.strip()
+                
+                # Prevent recursive commenting (bloat)
+                if content.startswith("#"):
+                    # Already commented, keep as-is (removed from execution logic but preserved in file)
+                    commented = f"{indent_str}{content}\n"
+                else:
+                    # Comment out active code being removed
+                    commented = f"{indent_str}# {content}\n"
+                    
                 patched_lines.append(commented)
             elif marker == '+':
                 # Add -> Insert new line

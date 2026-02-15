@@ -24,6 +24,28 @@ if sys.platform == "win32":
 app = typer.Typer(no_args_is_help=True)
 console = Console()
 
+def _show_onboarding():
+    """Displays a helpful setup guide for new users."""
+    grid = Table.grid(expand=True)
+    grid.add_column(justify="center")
+    grid.add_row("[bold yellow]Welcome to KernHell - The AI QA Agent[/bold yellow]")
+    grid.add_row("To start healing tests, you need to add at least one AI Provider API Key.")
+    
+    table = Table(title="Supported AI Providers", border_style="cyan")
+    table.add_column("Provider", style="bold green")
+    table.add_column("Why Use?", style="magenta")
+    table.add_column("Command Template")
+    
+    table.add_row("google", "Best Vision (Gemini 2.0)", "kernhell config add-key <KEY> --provider google")
+    table.add_row("nvidia", "Heavy Artillery (Llama 90B)", "kernhell config add-key <KEY> --provider nvidia")
+    table.add_row("groq", "Fastest Text (Llama 70B)", "kernhell config add-key <KEY> --provider groq")
+    table.add_row("openrouter", "Access to All Models", "kernhell config add-key <KEY> --provider openrouter")
+    
+    console.print(Panel(grid, border_style="yellow"))
+    console.print(table)
+    console.print("\n[dim]Get free keys from: build.nvidia.com, aistudio.google.com, console.groq.com[/dim]\n")
+
+
 # =============================================
 # CONFIG MANAGEMENT
 # =============================================
@@ -188,8 +210,8 @@ def doctor():
     total = config.get_key_count()
 
     if total == 0:
-        log_error("No API Keys configured!")
-        console.print("[dim]Run: kernhell config add-key <KEY> --provider google[/dim]")
+        _show_onboarding()
+        return
     else:
         log_success(f"Total Keys: {total}")
         for p, keys in config.get_all_providers_with_keys().items():
@@ -200,13 +222,57 @@ def doctor():
     console.print(f"Tests Healed: {stats.get('total_healed', 0)}")
     log_success("System Ready.")
 
+@app.command(name="help")
+def custom_help():
+    """Displays the official Command Reference."""
+    print_banner()
+    
+    grid = Table.grid(expand=True)
+    grid.add_column(justify="center")
+    grid.add_row("[bold cyan]COMMAND REFERENCE[/bold cyan]")
+    
+    # Core Table
+    core_table = Table(title="Core Actions", border_style="green")
+    core_table.add_column("Command", style="bold yellow")
+    core_table.add_column("Description", style="white")
+    
+    core_table.add_row("kernhell heal <target>", "Auto-Fix a file or folder recursively.")
+    core_table.add_row("kernhell doctor", "Run system diagnostics & connectivity check.")
+    core_table.add_row("kernhell report", "Generate HTML Dashboard of saved time.")
+    core_table.add_row("kernhell version", "Show version info.")
+    
+    # Config Table
+    config_table = Table(title="Configuration (API Keys)", border_style="blue")
+    config_table.add_column("Command", style="bold magenta")
+    config_table.add_column("Description", style="white")
+    
+    config_table.add_row("kernhell config add-key <key>", "Add API Key (use --provider name).")
+    config_table.add_row("kernhell config list-keys", "Show all active keys.")
+    config_table.add_row("kernhell config remove-key", "Remove a specific key.")
+    config_table.add_row("kernhell config prune", "Auto-remove dead/invalid keys.")
+    
+    console.print(Panel(grid, border_style="cyan"))
+    console.print(core_table)
+    console.print(config_table)
+    console.print("\n[dim]Run 'kernhell [command] --help' for details.[/dim]\n")
+
 @app.command()
 def heal(target_path: str = typer.Argument(..., help="File or Directory to heal")):
     """
     AUTO-HEAL: Recursively fixes files or directories.
     Supports 'Smart Retry' loop for 100% fix rate.
     """
+    # DEBUG: Is command running?
+    # console.print("DEBUG: Heal command invoked.")
+    
     print_banner()
+
+    # Graceful exit if no keys (Onboarding shown by banner)
+    if config.get_key_count() == 0:
+        _show_onboarding()
+        raise typer.Exit(code=0)
+    
+    # Resolving path manually as per logic
     target_path = Path(target_path).resolve()
 
     if not target_path.exists():
