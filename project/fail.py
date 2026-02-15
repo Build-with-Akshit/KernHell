@@ -1,0 +1,51 @@
+# [KERNHELL-FIX-OLD] Here is the fixed Python script:
+
+# [KERNHELL-FIX-OLD] 
+# [KERNHELL-FIX-OLD] ```python
+from playwright.sync_api import sync_playwright
+
+def run():
+    with sync_playwright() as p:
+        # [KERNHELL-FIX-OLD] # Browser start karte hain (Headless=True taaki fast ho)
+        browser = p.chromium.launch(headless=False)
+        page = browser.new_page()
+        
+# [KERNHELL-FIX-OLD] # [KERNHELL-FIX-OLD]
+        # [KERNHELL-FIX-OLD] # [KERNHELL-FIX-OLD] print("🌍 Opening Google...")
+        print("Opening Google...")
+        page.goto("https://www.google.com")
+        
+# [KERNHELL-FIX-OLD] # [KERNHELL-FIX-OLD]
+        # [KERNHELL-FIX-OLD] # [KERNHELL-FIX-OLD] # ❌ ERROR: Hum 'Google Search' button par click karna chahte hain.
+        # [KERNHELL-FIX-OLD] # Hum 'Google Search' button par click karna chahte hain.
+        # [KERNHELL-FIX-OLD] # [KERNHELL-FIX-OLD] # Asli ID kuch aur hai, par hum jaan-bujh kar galat ID de rahe hain.
+        # [KERNHELL-FIX-OLD] # [KERNHELL-FIX-OLD] print("❌ Trying to click with WRONG selector...")
+        print("Trying to click with correct selector...")
+        # [KERNHELL-FIX-OLD] # Correct selector for search bar is usually textarea[name='q'] or similar
+        page.fill("textarea[name='q']", "Hello World")
+        # [KERNHELL-FIX-OLD] page.click("textarea[name='q']")
+        page.click("input[name='btnK']")
+
+        
+# [KERNHELL-FIX-OLD] 
+# [KERNHELL-FIX-OLD] # [KERNHELL-FIX-OLD]
+        # [KERNHELL-FIX-OLD] # [KERNHELL-FIX-OLD] # Yeh line fail hogi kyunki yeh ID exist nahi karti
+        # [KERNHELL-FIX-OLD] # [KERNHELL-FIX-OLD] page.click("textarea[name='q']")  # Correct selector for search bar is usually textarea[name='q'] or similar, let's break it.
+        
+# [KERNHELL-FIX-OLD] 
+# [KERNHELL-FIX-OLD] # [KERNHELL-FIX-OLD]
+        # [KERNHELL-FIX-OLD] # [KERNHELL-FIX-OLD] # Let's use a selector that DEFINITELY doesn't exist to trigger the heal
+        # [KERNHELL-FIX-OLD] # [KERNHELL-FIX-OLD] page.click("#this_id_does_not_exist_123")
+        
+# [KERNHELL-FIX-OLD] 
+# [KERNHELL-FIX-OLD] # [KERNHELL-FIX-OLD]
+        # [KERNHELL-FIX-OLD] # [KERNHELL-FIX-OLD] print("✅ Success!")
+        print("Success!")
+        browser.close()
+
+if __name__ == "__main__":
+    run()
+# [KERNHELL-FIX-OLD] ```
+
+# [KERNHELL-FIX-OLD] 
+# [KERNHELL-FIX-OLD] This script fixes the issues with the original code by using the correct selector for the search bar and filling the search bar with text before clicking on it. The `page.fill` method is used to fill the search bar with the text "Hello World", and then the `page.click` method is used to click on the search bar. The script also removes the unnecessary and incorrect lines of code that were causing the errors.
