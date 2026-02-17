@@ -237,8 +237,13 @@ def custom_help():
     core_table.add_column("Description", style="white")
     
     core_table.add_row("kernhell heal <target>", "Auto-Fix a file or folder recursively.")
-    core_table.add_row("kernhell doctor", "Run system diagnostics & connectivity check.")
+    core_table.add_row("kernhell analyze <dir>", "Scan app source code and build a test map.")
+    core_table.add_row("kernhell generate <dir>", "AI-generate Playwright tests from analyzed app.")
+    core_table.add_row("kernhell hunt <log_dir>", "Monitor logs and auto-analyze bugs with AI.")
+    core_table.add_row("kernhell watch <test_dir>", "Continuously monitor and auto-heal on file changes.")
     core_table.add_row("kernhell report", "Generate HTML Dashboard of saved time.")
+    core_table.add_row("kernhell clean <dir>", "Wipe .kernhell_cache to free disk space.")
+    core_table.add_row("kernhell doctor", "Run system diagnostics & connectivity check.")
     core_table.add_row("kernhell version", "Show version info.")
     
     # Config Table
@@ -470,52 +475,150 @@ def _heal_single_file(file_path: Path) -> bool:
     return False
 
 
+# ============================================================
+# PHASE 3: BUG HUNTER & WATCH MODE
+# ============================================================
+
+@app.command()
+def hunt(
+    log_dir: str = typer.Argument(..., help="Directory containing log files"),
+    patterns: str = typer.Option("error,exception,crash,fatal", help="Comma-separated error patterns"),
+    slack: bool = typer.Option(False, "--slack", help="Enable Slack alerts"),
+    whatsapp: bool = typer.Option(False, "--whatsapp", help="Enable WhatsApp alerts")
+):
+    """🔍 Monitor server logs and auto-analyze bugs with AI"""
+    from kernhell.bug_hunter import LogMonitor, send_slack_alert, send_whatsapp_alert
+    from watchdog.observers import Observer
+    import time
+    
+    print_banner()
+    
+    # Validate directory exists
+    log_path = Path(log_dir).resolve()
+    if not log_path.exists() or not log_path.is_dir():
+        log_error(f"Directory not found: {log_path}")
+        raise typer.Exit(code=1)
+    
+    console.print("[bold green]🔍 Bug Hunter Started[/bold green]")
+    console.print(f"👀 Watching: {log_path}")
+    console.print(f"🎯 Patterns: {patterns}")
+    
+    # Setup alert callback
+    def alert_callback(message):
+        if slack:
+            send_slack_alert(message)
+        if whatsapp:
+            send_whatsapp_alert(message)
+    
+    # Create monitor
+    monitor = LogMonitor(
+        patterns=patterns.split(','),
+        alert_callback=alert_callback if (slack or whatsapp) else None
+    )
+    
+    # Start watching
+    observer = Observer()
+    observer.schedule(monitor, str(log_path), recursive=True)
+    observer.start()
+    
+    console.print("\n[yellow]Press Ctrl+C to stop...[/yellow]\n")
+    
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        console.print("\n[bold red]Stopping Bug Hunter...[/bold red]")
+        observer.stop()
+    
+    observer.join()
+    console.print("[green]✅ Bug Hunter stopped[/green]")
+
+
+@app.command()
+def watch(
+    test_dir: str = typer.Argument(..., help="Test directory to monitor"),
+    debounce: int = typer.Option(2, help="Seconds to wait before healing after change")
+):
+    """👀 Continuously monitor and auto-heal tests on file changes"""
+    from watchdog.observers import Observer
+    from watchdog.events import FileSystemEventHandler
+    import time
+    
+    print_banner()
+    
+    # Validate directory exists
+    test_path = Path(test_dir).resolve()
+    if not test_path.exists() or not test_path.is_dir():
+        log_error(f"Directory not found: {test_path}")
+        raise typer.Exit(code=1)
+    
+    console.print("[bold green]👀 Watch Mode Active[/bold green]")
+    console.print(f"Monitoring: {test_path}\n")
+    
+    class TestWatcher(FileSystemEventHandler):
+        def __init__(self):
+            self.last_run = {}
+        
+        def on_modified(self, event):
+            if event.is_directory:
+                return
+            
+            file_path = event.src_path
+            
+            # Only Python test files
+            if not (file_path.endswith('.py') and ('test' in file_path.lower())):
+                return
+            
+            # Debounce (avoid multiple triggers)
+            now = time.time()
+            if now - self.last_run.get(file_path, 0) < debounce:
+                return
+            
+            self.last_run[file_path] = now
+            
+            # Auto-heal
+            console.print(f"\n[yellow]📝 Change detected: {Path(file_path).name}[/yellow]")
+            console.print("[cyan]🔄 Auto-healing...[/cyan]")
+            
+            # Call heal function
+            try:
+                if _heal_single_file(Path(file_path)):
+                    console.print("[green]✅ Healed successfully![/green]\n")
+                else:
+                    console.print("[red]❌ Healing failed[/red]\n")
+            except Exception as e:
+                console.print(f"[red]❌ Healing failed: {e}[/red]\n")
+    
+    observer = Observer()
+    observer.schedule(TestWatcher(), str(test_path), recursive=True)
+    observer.start()
+    
+    console.print("[yellow]Press Ctrl+C to stop...[/yellow]\n")
+    
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        console.print("\n[bold red]Stopping Watch Mode...[/bold red]")
+        observer.stop()
+    
+    observer.join()
+    console.print("[green]✅ Watch Mode stopped[/green]")
+
+
 @app.command()
 def report():
-    """Generates a HTML Dashboard of your savings."""
+    """📊 Generate a premium HTML Dashboard of your healing stats."""
+    from kernhell.report_generator import generate_report, open_report
+
+    print_banner()
+    console.print("[bold cyan]📊 Generating Mission Control Dashboard...[/bold cyan]\n")
+
     stats = db.get_stats()
-    runs = db.get_recent_runs()
+    runs = db.get_recent_runs(limit=50)
 
-    html = f"""
-    <html>
-    <head><title>KernHell Mission Control</title>
-    <style>
-        body {{ font-family: sans-serif; background: #111; color: #fff; padding: 20px; }}
-        .card {{ background: #222; padding: 20px; margin: 10px; border-radius: 8px; }}
-        h1 {{ color: #0f0; }}
-        table {{ width: 100%; border-collapse: collapse; }}
-        th, td {{ padding: 10px; border-bottom: 1px solid #333; text-align: left; }}
-        th {{ color: #888; }}
-        .success {{ color: #0f0; }}
-        .fail {{ color: #f00; }}
-    </style>
-    </head>
-    <body>
-        <h1>KernHell Mission Control</h1>
-        <div class="card">
-            <h2>Stats</h2>
-            <p>Total Runs: {stats['total_runs']}</p>
-            <p>Fractures Healed: <span class="success">{stats['total_healed']}</span></p>
-            <p>Time Saved: <span class="success">{stats['saved_hours']} Hours</span></p>
-        </div>
-        <div class="card">
-            <h2>Recent Runs</h2>
-            <table>
-                <tr><th>Time</th><th>File</th><th>Status</th></tr>
-                {''.join([f"<tr><td>{r['timestamp']}</td><td>{r['file']}</td><td class='{'success' if r['healed'] else 'fail'}'>{'Healed' if r['healed'] else 'Failed'}</td></tr>" for r in runs])}
-            </table>
-        </div>
-    </body>
-    </html>
-    """
-
-    report_path = Path("kernhell_report.html")
-    with open(report_path, "w") as f:
-        f.write(html)
-
-    log_success(f"Report generated: [link=file:///{report_path.absolute()}]{report_path.absolute()}[/link]")
-    import webbrowser
-    webbrowser.open(report_path.absolute().as_uri())
+    report_path = generate_report(stats, runs)
+    open_report(report_path)
 
 if __name__ == "__main__":
     app()

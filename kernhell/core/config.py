@@ -1,12 +1,88 @@
 import json
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+from datetime import datetime, timedelta
 
 APP_NAME = "kernhell"
 CONFIG_DIR = Path.home() / f".{APP_NAME}"
 KEYS_FILE = CONFIG_DIR / "keys.json"
+QUOTA_FILE = CONFIG_DIR / "quota.json"
 
 SUPPORTED_PROVIDERS = ["google", "groq", "openrouter", "cloudflare", "nvidia"]
+
+
+class QuotaTracker:
+    """Persistent quota tracking across sessions"""
+    
+    def __init__(self):
+        self.quota_file = QUOTA_FILE
+        self.limits = {
+            'google': 50,       # per day (free tier)
+            'groq': 14400,      # per day (beta)
+            'nvidia': 1000,     # per day (free credits)
+            'openrouter': 200,  # per day (free tier)
+            'cloudflare': 10000 # per day (workers free)
+        }
+        self.usage = self._load_usage()
+        self._cleanup_old_dates()
+    
+    def _load_usage(self) -> Dict[str, Dict[str, int]]:
+        """Load usage data from disk"""
+        try:
+            if self.quota_file.exists():
+                with open(self.quota_file, 'r') as f:
+                    return json.load(f)
+            return {}
+        except (json.JSONDecodeError, FileNotFoundError):
+            return {}
+    
+    def _save_usage(self):
+        """Save usage data to disk"""
+        try:
+            with open(self.quota_file, 'w') as f:
+                json.dump(self.usage, f, indent=4)
+        except Exception:
+            pass  # Fail silently if can't save
+    
+    def can_use(self, provider: str) -> bool:
+        """Check if provider has quota remaining for today"""
+        today = datetime.now().date().isoformat()
+        used = self.usage.get(provider, {}).get(today, 0)
+        limit = self.limits.get(provider, float('inf'))
+        return used < limit
+    
+    def record_usage(self, provider: str):
+        """Increment usage counter for today"""
+        today = datetime.now().date().isoformat()
+        if provider not in self.usage:
+            self.usage[provider] = {}
+        self.usage[provider][today] = self.usage[provider].get(today, 0) + 1
+        self._save_usage()
+    
+    def get_usage(self, provider: str) -> int:
+        """Get today's usage count for a provider"""
+        today = datetime.now().date().isoformat()
+        return self.usage.get(provider, {}).get(today, 0)
+    
+    def get_remaining(self, provider: str) -> int:
+        """Get remaining quota for today"""
+        limit = self.limits.get(provider, float('inf'))
+        if limit == float('inf'):
+            return 999999  # Unlimited
+        used = self.get_usage(provider)
+        return max(0, limit - used)
+    
+    def _cleanup_old_dates(self):
+        """Remove usage data older than 7 days"""
+        cutoff = (datetime.now().date() - timedelta(days=7)).isoformat()
+        
+        for provider in list(self.usage.keys()):
+            for date in list(self.usage[provider].keys()):
+                if date < cutoff:
+                    del self.usage[provider][date]
+        
+        self._save_usage()
+
 
 class ConfigManager:
     """
@@ -19,6 +95,7 @@ class ConfigManager:
         self.provider_keys: Dict[str, List[str]] = self._load_keys()
         self.current_provider: str = self._detect_default_provider()
         self.current_key_index: int = 0
+        self.quota_tracker = QuotaTracker()  # NEW: Quota tracking
 
     def _ensure_config_dir(self):
         if not CONFIG_DIR.exists():
@@ -127,6 +204,26 @@ class ConfigManager:
 
     def get_all_providers_with_keys(self) -> Dict[str, List[str]]:
         return {p: keys for p, keys in self.provider_keys.items() if keys}
+    
+    # --- NEW: Quota Management Integration ---
+    
+    def can_use_provider(self, provider: str) -> bool:
+        """Check if provider has both keys AND quota remaining"""
+        has_keys = bool(self.provider_keys.get(provider))
+        has_quota = self.quota_tracker.can_use(provider)
+        return has_keys and has_quota
+    
+    def record_api_call(self, provider: str):
+        """Record that an API call was made"""
+        self.quota_tracker.record_usage(provider)
+    
+    def get_quota_status(self, provider: str) -> Dict[str, int]:
+        """Get quota status for a provider"""
+        return {
+            'used': self.quota_tracker.get_usage(provider),
+            'remaining': self.quota_tracker.get_remaining(provider),
+            'limit': self.quota_tracker.limits.get(provider, 0)
+        }
 
 # Global Instance
 config = ConfigManager()

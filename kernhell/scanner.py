@@ -70,16 +70,55 @@ def capture_failure_screenshot(file_path: str, error_url: str = None) -> Optiona
             page.screenshot(path=str(screenshot_path), full_page=True)
             browser.close()
 
-        # Read and encode
-        with open(screenshot_path, "rb") as f:
-            img_data = base64.b64encode(f.read()).decode("utf-8")
-
-        log_info(f"Screenshot captured: {screenshot_path.name}")
-        return img_data
+        # Optimize screenshot before encoding
+        optimized_data = optimize_screenshot(screenshot_path)
+        
+        log_info(f"Screenshot captured & optimized: {screenshot_path.name}")
+        return optimized_data
 
     except Exception as e:
         log_warning(f"Screenshot capture failed: {e}")
         return None
+
+
+def optimize_screenshot(image_path: Path) -> str:
+    """
+    Resize & compress screenshot for faster AI processing.
+    Uses WebP for genuine lossy compression (PNG ignores quality param).
+    Returns: base64-encoded optimized image string
+    """
+    try:
+        from PIL import Image
+        import io
+        
+        img = Image.open(image_path)
+        
+        # Resize if too large (max 1024px on longest side)
+        max_dimension = 1024
+        if img.width > max_dimension or img.height > max_dimension:
+            ratio = min(max_dimension / img.width, max_dimension / img.height)
+            new_width = int(img.width * ratio)
+            new_height = int(img.height * ratio)
+            img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            log_info(f"Resized screenshot: {img.width}x{img.height}")
+        
+        # Compress in-memory as WebP (actually supports quality unlike PNG)
+        buffer = io.BytesIO()
+        img.save(buffer, format='WEBP', quality=80)
+        buffer.seek(0)
+        
+        encoded = base64.b64encode(buffer.read()).decode('utf-8')
+        log_info(f"Optimized: {image_path.stat().st_size // 1024}KB → {len(encoded) * 3 // 4 // 1024}KB")
+        return encoded
+        
+    except ImportError:
+        log_warning("PIL not installed, returning unoptimized screenshot")
+        with open(image_path, 'rb') as f:
+            return base64.b64encode(f.read()).decode('utf-8')
+    except Exception as e:
+        log_warning(f"Screenshot optimization failed: {e}")
+        with open(image_path, 'rb') as f:
+            return base64.b64encode(f.read()).decode('utf-8')
 
 
 def _extract_url_from_file(file_path: str) -> Optional[str]:

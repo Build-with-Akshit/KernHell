@@ -20,9 +20,9 @@ def print_banner():
     banner_text = """
     KERNHELL - AUTO QA AGENT
     ========================
-    Self-Healing Tests v0.1
+    Self-Healing Tests v2.0
     """
-    console.print(Panel(Text(banner_text, style="bold green"), title="[bold white]KernHell v0.1 - Zero-Cost Self-Healing Agent[/bold white]", border_style="green"))
+    console.print(Panel(Text(banner_text, style="bold green"), title="[bold white]KernHell v2.0 - Zero-Cost Self-Healing Agent[/bold white]", border_style="green"))
 
 def log_info(msg: str):
     console.print(f"[bold blue]INFO:[/bold blue] {msg}")
