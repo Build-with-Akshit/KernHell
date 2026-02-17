@@ -1,44 +1,70 @@
+# 🐧 Install KernHell on Linux
 
-# KernHell Setup Guide for Linux (Ubuntu/Debian)
+Follow these steps for Ubuntu/Debian/Fedora.
 
-## Prerequisites
-1.  **Python 3.10+**:
-    ```bash
-    sudo apt update
-    sudo apt install python3 python3-pip python3-venv git
-    ```
-2.  **Node.js (Optional)**:
-    ```bash
-    # Via NVM/NodeSource recommended
-    curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
-    sudo apt-get install -y nodejs
-    ```
+---
 
-## Installation
+## 🏗️ Step 1: Install Prerequisites
 
-1.  **Clone Repo**
-    ```bash
-    git clone https://github.com/yourusername/kernhell.git
-    cd kernhell
-    ```
+You need Python 3.10+ and `venv` support.
 
-2.  **Virtual Environment**
-    ```bash
-    python3 -m venv venv
-    source venv/bin/activate
-    ```
+### Ubuntu / Debian:
+```bash
+sudo apt update
+sudo apt install python3 python3-pip python3-venv git
+```
 
-3.  **Install KernHell**
-    ```bash
-    pip install .
-    ```
+### Fedora:
+```bash
+sudo dnf install python3 python3-pip git
+```
 
-4.  **Install Browsers**
-    ```bash
-    playwright install chromium
-    sudo playright install-deps
-    ```
+---
 
-## "Externally Managed Environment" Error?
-If you see this error, ensure you are inside the `venv` active shell.
-Do NOT use `sudo pip install`.
+## ⚡ Step 2: Install KernHell
+
+1. **Clone the Repo:**
+   ```bash
+   git clone https://github.com/your-repo/kernhell.git
+   cd kernhell
+   ```
+
+2. **Create Virtual Environment (Recommended):**
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate
+   ```
+
+3. **Install Package:**
+   ```bash
+   pip install -e .
+   ```
+
+4. **Install Browsers:**
+   ```bash
+   playwright install chromium
+   playwright install-deps
+   ```
+
+---
+
+## 🔑 Step 3: Add API Keys
+
+```bash
+# Google Gemini (Best Vision)
+kernhell config add-key "YOUR_KEY" --provider google
+```
+
+---
+
+## ⚠️ Troubleshooting
+
+**"kernhell: command not found"**
+
+If you installed WITHOUT a virtual environment (using `--user`), the binary is in `~/.local/bin`. Ensure this is in your PATH.
+
+Add to `~/.bashrc` or `~/.zshrc`:
+```bash
+export PATH=$PATH:~/.local/bin
+```
+Then run `source ~/.bashrc`.

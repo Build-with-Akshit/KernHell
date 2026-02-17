@@ -1,4 +1,4 @@
-# 🔧 KernHell Troubleshooting Guide
+# KernHell Troubleshooting Guide
 
 If you encounter issues like "Command not found", "v0.1 version", or "API Errors", follow these solutions.
 

@@ -1,38 +1,71 @@
+# 🪟 Install KernHell on Windows
 
-# KernHell Setup Guide for Windows
+Follow these steps to set up KernHell 2.0 on Windows 10/11.
 
-## Prerequisites
-1.  **Python 3.10+**: [Download Here](https://www.python.org/downloads/)
-    *   Ensure "Add Python to PATH" is checked during installation.
-2.  **Node.js (Optional)**: For React/Web projects. [Download Here](https://nodejs.org/)
-3.  **Git**: [Download Here](https://git-scm.com/)
+---
 
-## Installation
+## 🏗️ Step 1: Install Python
 
-1.  **Clone the Repository**
-    ```powershell
-    git clone https://github.com/yourusername/kernhell.git
-    cd kernhell
-    ```
+1. Download Python 3.10 or newer from [python.org](https://www.python.org/downloads/).
+2. Run the installer.
+3. **CRITICAL:** Check the box **"Add Python to PATH"** at the bottom of the first screen.
+4. Click "Install Now".
 
-2.  **Create a Virtual Environment**
-    ```powershell
-    python -m venv venv
-    .\venv\Scripts\Activate
-    ```
+---
 
-3.  **Install KernHell**
-    ```powershell
-    pip install .
-    ```
+## ⚡ Step 2: Automated Install (Recommended)
 
-4.  **Install Playwright Browsers**
-    ```powershell
-    playwright install chromium
-    ```
+We have a 1-click script that handles virtual environments and updates.
 
-## Verification
-Run the doctor command to check your setup:
+1. Open PowerShell in the `KernHell` folder.
+   *(Shift + Right Click in folder -> "Open PowerShell window here")*
+2. Run the update script:
+   ```powershell
+   .\install_update.ps1
+   ```
+3. If successful, it will show the version and you are ready!
+
+---
+
+## 🛠️ Step 3: Manual Install (Advanced)
+
+If you prefer doing it manually:
+
+1. **Create a Virtual Environment:**
+   ```powershell
+   python -m venv venv
+   ```
+
+2. **Activate it:**
+   ```powershell
+   .\venv\Scripts\Activate.ps1
+   ```
+   *(If you get a permission error, run `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser`)*
+
+3. **Install KernHell:**
+   ```powershell
+   pip install -e .
+   ```
+
+4. **Install Browsers:**
+   ```powershell
+   playwright install chromium
+   ```
+
+---
+
+## 🔑 Step 4: Add API Keys
+
+You need at least one AI provider key.
+
+```powershell
+# Google Gemini (Recommended)
+kernhell config add-key "YOUR_KEY" --provider google
+```
+
+## ✅ Verify
+
+Run:
 ```powershell
 kernhell doctor
 ```
