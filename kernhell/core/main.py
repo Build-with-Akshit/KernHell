@@ -237,7 +237,7 @@ def custom_help():
     core_table.add_column("Description", style="white")
     
     core_table.add_row("kernhell heal <target>", "Auto-Fix a file or folder recursively.")
-    core_table.add_row("kernhell analyze <dir>", "Scan app source code and build a test map.")
+    core_table.add_row("kernhell scan <dir>", "Scan app source code and build a test map.")
     core_table.add_row("kernhell generate <dir>", "AI-generate Playwright tests from analyzed app.")
     core_table.add_row("kernhell hunt <log_dir>", "Monitor logs and auto-analyze bugs with AI.")
     core_table.add_row("kernhell watch <test_dir>", "Continuously monitor and auto-heal on file changes.")
@@ -266,8 +266,8 @@ def custom_help():
 # PHASE 12: THE QA ARCHITECT
 # ============================================================
 @app.command()
-def analyze(source_dir: str = typer.Argument(..., help="Path to your application source code")):
-    """Analyze an app's source code to build an intelligent map."""
+def scan(source_dir: str = typer.Argument(..., help="Path to your application source code")):
+    """Scan an app's source code to build an intelligent map."""
     print_banner()
     from kernhell.analyzer import AppAnalyzer
     from kernhell.utils import CacheManager
