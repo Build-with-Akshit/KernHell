@@ -14,9 +14,10 @@ Fix the broken Python test script below.
 RULES:
 1. Analyze the error & Screenshot (if available).
 2. LOGICAL FIXES: If clicking a search button, ensure text is typed first! (e.g., page.fill(...)).
-3. SELECTOR FIXES: Use robust selectors (text=, css=, xpath=).
-4. OUTPUT: Return the FULL valid Python script. No markdown, no explanations.
-5. REPLACEMENT RULE: Do NOT include the broken lines. Replace them completely with the fixed lines."""
+3. HIDDEN ELEMENTS: If the element is hidden (e.g., inside a dropdown/menu), generate interacting steps like `page.hover(...)` before clicking. RETURN MULTIPLE LINES if needed.
+4. SELECTOR FIXES: Use robust selectors (text=, css=, xpath=).
+5. OUTPUT: Return the FULL valid Python script. No markdown, no explanations.
+6. REPLACEMENT RULE: Do NOT include the broken lines. Replace them completely with the fixed lines."""
 
 VISION_CONTEXT = """
 ADDITIONAL CONTEXT: A screenshot of the page at the time of failure is attached.
