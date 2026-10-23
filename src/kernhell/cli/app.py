@@ -13,6 +13,8 @@ from rich.console import Console
 
 from kernhell import __app_name__, __version__
 from kernhell.cli.commands.cache import cache_app
+from kernhell.cli.commands.config import config_app
+from kernhell.cli.commands.dashboard import dashboard_command
 from kernhell.cli.commands.heal import heal_command
 from kernhell.cli.commands.scan import scan_command
 
@@ -29,7 +31,10 @@ app = typer.Typer(
 # Register core commands
 app.command(name="scan", help="Scan a test file to detect broken selectors and capture DOM snapshots.")(scan_command)
 app.command(name="heal", help="Autonomously heal broken Playwright selectors in a test file.")(heal_command)
+app.command(name="dashboard", help="Launch the KernHell Mission Control Dashboard and REST API.")(dashboard_command)
+app.command(name="ui", help="Alias for 'dashboard' command.")(dashboard_command)
 app.add_typer(cache_app, name="cache")
+app.add_typer(config_app, name="config")
 
 
 def version_callback(value: bool) -> None:

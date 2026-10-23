@@ -10,8 +10,9 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
+!dashboard/src/lib/**
 parts/
 sdist/
 var/
@@ -67,3 +68,9 @@ playwright/.cache/
 *~
 .DS_Store
 Thumbs.db
+
+# Dashboard (Next.js / Node)
+dashboard/node_modules/
+dashboard/.next/
+dashboard/out/
+

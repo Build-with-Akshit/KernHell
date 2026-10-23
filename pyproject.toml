@@ -29,6 +29,7 @@ dependencies = [
     "pydantic-settings>=2.1,<3.0",
     "playwright>=1.40,<2.0",
     "selectolax>=0.3,<1.0",
+    "libcst>=1.1.0",
     "structlog>=24.0",
     "tomli>=2.0;python_version<'3.11'",
 ]
@@ -57,10 +58,10 @@ all = ["kernhell[ai,dashboard,dev]"]
 kernhell = "kernhell.cli.app:app"
 
 [project.urls]
-Homepage = "https://github.com/kernhell/kernhell"
-Documentation = "https://kernhell.dev/docs"
-Repository = "https://github.com/kernhell/kernhell"
-Issues = "https://github.com/kernhell/kernhell/issues"
+Homepage = "https://github.com/riteshkumar072/KernHell"
+Documentation = "https://github.com/riteshkumar072/KernHell#readme"
+Repository = "https://github.com/riteshkumar072/KernHell"
+Issues = "https://github.com/riteshkumar072/KernHell/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/kernhell"]
