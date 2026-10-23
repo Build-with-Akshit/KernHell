@@ -1,6 +1,7 @@
-"""CLI command: `kernhell heal <test_file>`.
+"""CLI command: `kernhell heal <test_file_or_directory>`.
 
-Executes test, intercepts selector failures, and runs the self-healing engine.
+Executes tests, intercepts selector failures, and runs the self-healing engine.
+Supports single-file healing and directory-wide batch healing.
 """
 
 from __future__ import annotations
@@ -14,7 +15,6 @@ from rich.console import Console
 from kernhell.cli.ui import (
     print_banner,
     print_failure_context,
-    print_healing_report,
     print_pruning_stats,
 )
 from kernhell.core.config import load_config
@@ -24,22 +24,36 @@ from kernhell.core.exceptions import (
     ScannerError,
     TestFileNotFoundError,
 )
+from kernhell.core.models import HealingReport
 from kernhell.core.orchestrator import HealingOrchestrator
+from kernhell.reporter.reporter import HealingReporter
+from kernhell.utils.file_utils import read_file
 from kernhell.utils.logger import setup_logging
 
 console = Console(stderr=True)
 
 
 def heal_command(
-    test_file: Path = typer.Argument(
+    target: Path = typer.Argument(
         ...,
-        help="Path to the Playwright test file to heal.",
+        help="Path to a Playwright test file or directory of test files to heal.",
         exists=False,
     ),
     dry_run: bool = typer.Option(
         False,
         "--dry-run",
-        help="Preview healed selectors without modifying test file.",
+        help="Preview healed selectors without mutating test files on disk.",
+    ),
+    output_format: str = typer.Option(
+        "text",
+        "--output",
+        "-o",
+        help="Output format: 'text' (Rich terminal) or 'json' (machine-parseable for CI).",
+    ),
+    output_file: Optional[Path] = typer.Option(
+        None,
+        "--output-file",
+        help="Optional path to save JSON healing report.",
     ),
     config_path: Optional[Path] = typer.Option(
         None,
@@ -64,32 +78,64 @@ def heal_command(
     log_level = "DEBUG" if verbose else cfg.logging.level
     setup_logging(level=log_level, json_output=json_log or cfg.logging.json_output)
 
-    print_banner()
+    if output_format != "json":
+        print_banner()
 
-    if not test_file.exists():
-        console.print(f"[bold red]Error:[/bold red] Test file not found: {test_file}")
+    if not target.exists():
+        console.print(f"[bold red]Error:[/bold red] Target path not found: {target}")
         raise typer.Exit(code=1)
 
-    orchestrator = HealingOrchestrator(cfg)
-
-    with console.status(f"[bold cyan]Running self-healing engine on [white]{test_file.name}[/white]..."):
-        try:
-            report = orchestrator.heal(test_file, dry_run=dry_run)
-        except NoFailuresDetectedError as exc:
-            console.print(f"[bold green]✔[/bold green] {exc}")
+    # Discover test files (single file vs batch directory mode)
+    if target.is_dir():
+        test_files = sorted(target.rglob("test_*.py"))
+        if not test_files:
+            console.print(f"[yellow]No 'test_*.py' files found in {target}[/yellow]")
             raise typer.Exit(code=0)
-        except (PlaywrightNotInstalledError, ScannerError, TestFileNotFoundError) as exc:
-            console.print(f"[bold red]Healing Pipeline Failed:[/bold red] {exc}")
-            raise typer.Exit(code=1)
+    else:
+        test_files = [target]
 
-    if not report.results:
-        console.print("[bold green]✔ All tests in file passed. Zero broken selectors detected.[/bold green]")
-        raise typer.Exit(code=0)
+    orchestrator = HealingOrchestrator(cfg)
+    reports: list[HealingReport] = []
 
-    for i, result in enumerate(report.results, start=1):
-        print_failure_context(result.failure, index=i)
-        if result.pruned_dom:
-            print_pruning_stats(result.pruned_dom)
-        console.print()
+    for test_file in test_files:
+        original_code = read_file(test_file) if test_file.is_file() else ""
 
-    print_healing_report(report)
+        with console.status(f"[bold cyan]Scanning & healing [white]{test_file.name}[/white]..."):
+            try:
+                report = orchestrator.heal(test_file, dry_run=dry_run)
+                reports.append(report)
+            except NoFailuresDetectedError as exc:
+                if output_format != "json":
+                    console.print(f"[bold green]✔[/bold green] {test_file.name}: {exc}")
+                continue
+            except (PlaywrightNotInstalledError, ScannerError, TestFileNotFoundError) as exc:
+                console.print(f"[bold red]Failed on {test_file.name}:[/bold red] {exc}")
+                continue
+
+        if output_format != "json" and report.results:
+            for i, result in enumerate(report.results, start=1):
+                print_failure_context(result.failure, index=i)
+                if result.pruned_dom:
+                    print_pruning_stats(result.pruned_dom)
+                console.print()
+
+            # Render surgical AST diff if file was patched
+            if not dry_run and original_code and test_file.is_file():
+                patched_code = read_file(test_file)
+                if patched_code != original_code:
+                    HealingReporter.render_diff(
+                        old_code=original_code,
+                        new_code=patched_code,
+                        filename=test_file.name,
+                    )
+
+            HealingReporter.print_summary(report)
+
+    # JSON export handling
+    if output_format == "json" or output_file is not None:
+        combined_json = [json_str for report in reports for json_str in [HealingReporter.export_json(report)]]
+        payload = f"[\n{', '.join(combined_json)}\n]"
+        if output_file:
+            output_file.write_text(payload, encoding="utf-8")
+        if output_format == "json":
+            typer.echo(payload)
