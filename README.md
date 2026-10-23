@@ -48,13 +48,36 @@ pip install -e ".[dev]"
 kernhell scan tests/fixtures/sample_test.py
 ```
 
-### 2. Autonomously Heal a Test File
+### 2. Autonomously Heal a Test File or Test Directory
 
 ```bash
+# Preview changes without modifying code (dry run)
 kernhell heal tests/fixtures/sample_test.py --dry-run
+
+# Surgically patch and verify fix with automatic backup
+kernhell heal tests/fixtures/sample_test.py
+
+# Batch heal all test files in a folder
+kernhell heal tests/
+
+# Machine-readable output for CI/CD pipelines
+kernhell heal tests/ --output json
 ```
 
-### 3. Check Version
+### 3. Semantic Vector Memory & Cache
+
+```bash
+# List all verified cached selector mappings
+kernhell cache list
+
+# View cache hit/miss ratio and efficiency metrics
+kernhell cache stats
+
+# Purge semantic memory
+kernhell cache clear
+```
+
+### 4. Check Version
 
 ```bash
 kernhell --version
@@ -73,8 +96,8 @@ pytest
 ## 🗺️ Execution Roadmap
 
 - [x] **Weekend 1: Foundation (Scanner, Pruner, Core Models & CLI)**
-- [ ] **Weekend 2: AI Brain (Analyzer, Healer & AST CST Surgeon)**
-- [ ] **Weekend 3: Semantic Memory (ChromaDB Vector Cache & JS Support)**
+- [x] **Weekend 2: AI Brain (Analyzer, Healer, CST Surgical Patcher & Verifier)**
+- [x] **Weekend 3: Semantic Memory (Vector Cache, Embedder, Batch Healing & CI Export)**
 - [ ] **Weekend 4: Mission Control Dashboard (Next.js & Production Release)**
 
 ---
