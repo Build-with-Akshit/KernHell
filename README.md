@@ -7,7 +7,8 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/)
 [![Next.js 14](https://img.shields.io/badge/dashboard-Next.js%2014-black.svg)](https://nextjs.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![CI/CD Status](https://img.shields.io/badge/tests-59%20passed%20(100%25)-brightgreen.svg)](https://github.com/riteshkumar072/KernHell)
+[![CI/CD Status](https://img.shields.io/badge/tests-61%20passed%20(100%25)-brightgreen.svg)](https://github.com/riteshkumar072/KernHell)
+[![TypeScript & Python](https://img.shields.io/badge/playwright-Python%20%7C%20TypeScript-blue.svg)](https://playwright.dev/)
 
 ---
 
@@ -15,7 +16,7 @@
 
 Modern frontend engineering moves fast. When developers refactor classes, IDs, or DOM wrappers (e.g., `#buy-now` becomes `#purchase-btn`), automated Playwright and Selenium test suites fail even though the business functionality works seamlessly. QA teams waste 30–40% of their time manually maintaining broken selectors.
 
-**KernHell autonomously resolves broken selectors in real-time, preserving 100% of your code formatting, comments, and QA sanity.**
+**KernHell autonomously resolves broken selectors in real-time across both Python and TypeScript/JavaScript test suites, preserving 100% of your code formatting, comments, and QA sanity.**
 
 ---
 
@@ -33,7 +34,7 @@ flowchart TD
     F -->|RENAME: Safe Refactor| G
     G -->|5. Verify Unambiguous Element| I[Selector Fix: role / data-testid / text]
     I -->|Store Embedding| D
-    I -->|6. Surgical Patch| J[LibCST AST Patcher]
+    I -->|6. Surgical Patch| J[Surgical CST & Line Patcher]
     J -->|Preserve Comments & Formatting| K[Automatic Verification Runner]
     K -->|Pass| L[Commit Fix & Log Run]
     K -->|Fail| M[Immediate Rollback from .kernhell.bak]
@@ -43,12 +44,13 @@ flowchart TD
 
 ## 🚀 Key Features
 
+- **Multi-Language Playwright Support**: Seamlessly heals both **Python (`pytest-playwright`)** and **TypeScript / JavaScript (`@playwright/test`)** test suites with zero configuration.
 - **Failure Interception & Live DOM Capture (`Scanner`)**: Intercepts Playwright selector timeouts and crashes, capturing the error stack trace, line number, broken selector, and live DOM snapshot (`page.content()`).
 - **High-Speed Semantic DOM Pruning (`DOMPruner`)**: Strips scripts, styles, SVGs, base64 data, and non-semantic wrappers using `selectolax` to slash token usage by 80–90% while keeping semantic landmarks and accessibility roles.
 - **Semantic Vector Memory (`Vector Cache`)**: 384-dimensional dense cosine index matching broken selectors against historical fixes. Resolves recurring failures in **<5ms** with zero LLM API cost.
 - **Strict Anti-Hallucination Guardrails**: Distinguishes between renamed selectors (`RENAME`) and genuine missing features (`MISSING`) to prevent false-positive heals on actual product regressions.
-- **Surgical LibCST AST Patching (`Patcher`)**: Surgically transforms only the target locator expression in the AST without reformatting unrelated code or stripping inline comments.
-- **Automated Verification & Zero-Risk Rollback (`Verifier`)**: Re-runs the patched test in a sandbox; if it fails, immediately restores the code from `.kernhell.bak`.
+- **Surgical Code Patching (`Patcher`)**: Surgically transforms only the target locator expression in the AST / file without reformatting unrelated code or stripping inline comments (supports Python LibCST & TypeScript line targeting).
+- **Automated Verification & Zero-Risk Rollback (`Verifier`)**: Re-runs the patched test in a sandbox (via `pytest` or `npx playwright test`); if it fails, immediately restores the code from `.kernhell.bak`.
 - **Mission Control Dashboard (`Next.js App Router`)**: High-tech, dark-mode glassmorphic web dashboard providing live stats, real-time healing stream, semantic memory inspector, and interactive simulation playground.
 
 ---
