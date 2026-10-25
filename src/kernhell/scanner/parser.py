@@ -35,7 +35,7 @@ _TIMEOUT_PATTERN = re.compile(
 
 # Matches: "waiting for locator("button#buy-now")" or 'locator("#buy-now")'
 _LOCATOR_PATTERN = re.compile(
-    r"""locator\(\s*["'`]?(.+?)["'`]?\s*\)""",
+    r"""locator\(\s*(.+?)\s*\)""",
     re.IGNORECASE,
 )
 
@@ -145,6 +145,17 @@ def _detect_error_type(text: str) -> ErrorType:
     return ErrorType.OTHER
 
 
+def _clean_extracted_selector(sel: str) -> str:
+    """Unescape and strip quotation artifacts from extracted selectors."""
+    s = sel.strip()
+    # Strip wrapping quotes if present
+    if (s.startswith('"') and s.endswith('"')) or (s.startswith("'") and s.endswith("'")):
+        s = s[1:-1]
+    # Replace escaped quotes from Python repr/Playwright traceback
+    s = s.replace('\\\\"', '"').replace('\\"', '"').replace("\\'", "'")
+    return s.strip()
+
+
 def _extract_selector(text: str) -> tuple[str, SelectorType]:
     """Extract the broken selector and its type from error output.
 
@@ -181,13 +192,13 @@ def _extract_selector(text: str) -> tuple[str, SelectorType]:
     # locator("selector")
     m = _LOCATOR_PATTERN.search(text)
     if m:
-        sel = m.group(1)
+        sel = _clean_extracted_selector(m.group(1))
         return sel, classify_selector(sel)
 
     # page.click("selector") etc.
     m = _PAGE_ACTION_PATTERN.search(text)
     if m:
-        sel = m.group(1)
+        sel = _clean_extracted_selector(m.group(1))
         return sel, classify_selector(sel)
 
     return "", SelectorType.UNKNOWN

@@ -149,22 +149,47 @@ class HealingOrchestrator:
                 selector=failure.broken_selector,
                 score=score,
             )
-            if not dry_run:
-                self.patcher.patch_test_file(
-                    test_file=test_file,
-                    fix=cached_fix,
-                    line_number=failure.line_number,
-                )
-                self.verifier.verify(test_file, cached_fix)
-            else:
-                cached_fix.verified = True
-
-            return HealingResult(
-                failure=failure,
-                pruned_dom=pruned_dom,
-                fix=cached_fix,
-                from_cache=True,
+            applied_fix = SelectorFix(
+                old_selector=failure.broken_selector,
+                new_selector=cached_fix.new_selector,
+                strategy=cached_fix.strategy,
+                confidence=score,
+                reasoning=f"Matched semantic cache fix (similarity {score:.2f})",
+                verified=cached_fix.verified,
             )
+            if not dry_run:
+                try:
+                    self.patcher.patch_test_file(
+                        test_file=test_file,
+                        fix=applied_fix,
+                        line_number=failure.line_number,
+                    )
+                    verified = self.verifier.verify(test_file, applied_fix)
+                    if verified:
+                        return HealingResult(
+                            failure=failure,
+                            pruned_dom=pruned_dom,
+                            fix=applied_fix,
+                            from_cache=True,
+                        )
+                    else:
+                        logger.warning(
+                            "orchestrator.cache_fix_verification_failed.proceeding_to_ai",
+                            selector=failure.broken_selector,
+                        )
+                except Exception as exc:
+                    logger.warning(
+                        "orchestrator.cache_fix_patch_failed.proceeding_to_ai",
+                        error=str(exc),
+                    )
+            else:
+                applied_fix.verified = True
+                return HealingResult(
+                    failure=failure,
+                    pruned_dom=pruned_dom,
+                    fix=applied_fix,
+                    from_cache=True,
+                )
 
         # 2. AI Failure Diagnosis
         try:
