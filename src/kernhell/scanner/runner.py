@@ -35,24 +35,32 @@ logger = structlog.get_logger()
 
 
 def _extract_url_or_content_from_test(test_file: Path) -> tuple[str | None, str | None]:
-    """Extract the page URL or inline page.set_content HTML from a test file."""
+    """Extract the page URL or inline page.set_content / page.setContent HTML from a test file."""
     try:
         content = test_file.read_text(encoding="utf-8")
     except Exception:
         return None, None
 
-    # Check for inline set_content first: page.set_content('<button...')
+    # Check for inline set_content / setContent:
+    # Handles:
+    #   Python: page.set_content('''...'''), page.set_content("""..."""), page.set_content("...")
+    #   TypeScript/JS: await page.setContent(`...`), await page.setContent("..."), page.setContent('...')
     set_content_match = re.search(
-        r"""page\.set_content\(\s*(?:r?["']{3}(.+?)["']{3}|r?["'](.+?)["'])\s*\)""",
+        r"""(?:await\s+)?page\.(?:set_content|setContent)\(\s*(?:r?["']{3}(.+?)["']{3}|`([\s\S]+?)`|r?["']([\s\S]+?)["'])\s*\)""",
         content,
-        re.DOTALL,
     )
     if set_content_match:
-        html = set_content_match.group(1) or set_content_match.group(2)
+        html = (
+            set_content_match.group(1)
+            or set_content_match.group(2)
+            or set_content_match.group(3)
+        )
+        if html:
+            html = html.replace('\\"', '"').replace("\\'", "'")
         return None, html
 
-    # Match: page.goto("https://example.com") or page.goto('...')
-    m = re.search(r"""page\.goto\(\s*["'](.+?)["']""", content)
+    # Match: page.goto("https://example.com"), await page.goto('...'), or await page.goto(`...`)
+    m = re.search(r"""(?:await\s+)?page\.goto\(\s*["'`]?([^"'`\s\)]+)["'`]?""", content)
     url = m.group(1) if m else None
     return url, None
 
@@ -111,6 +119,11 @@ class ScannerRunner:
         failures = parse_playwright_errors(error_output, test_file)
 
         if not failures:
+            if "Cannot find module '@playwright/test'" in error_output:
+                raise ScannerError(
+                    f"TypeScript test execution failed in {test_file.name}: '@playwright/test' is not installed in the project. "
+                    "Run: npm install -D @playwright/test"
+                )
             raise NoFailuresDetectedError(
                 f"Test failed but no Playwright selector errors detected in {test_file.name}. "
                 "The failure may not be selector-related."
@@ -148,11 +161,14 @@ class ScannerRunner:
         npx_cmd = "npx.cmd" if sys.platform == "win32" else "npx"
         cmd = [
             npx_cmd,
+            "--yes",
             "playwright",
             "test",
-            str(test_file),
+            test_file.name,
             "--reporter=list",
         ]
+        if self._scanner_cfg.timeout_ms:
+            cmd.append(f"--timeout={self._scanner_cfg.timeout_ms}")
 
         logger.debug("scanner.playwright_ts.exec", cmd=" ".join(cmd))
 

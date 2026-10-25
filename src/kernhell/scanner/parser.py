@@ -27,9 +27,9 @@ logger = structlog.get_logger()
 # Regex patterns for Playwright error parsing
 # ---------------------------------------------------------------------------
 
-# Matches: "locator.click: Timeout 5000ms exceeded." or "Timed out 5000ms waiting for expect(locator)..."
+# Matches: "locator.click: Timeout 5000ms exceeded." or "Test timeout of 30000ms exceeded." or "Timed out 5000ms waiting..."
 _TIMEOUT_PATTERN = re.compile(
-    r"(locator\.\w+|page\.\w+|expect\(locator\)):?\s*Timeout\s+\d+ms\s+exceeded|Timed\s+out\s+\d+ms",
+    r"(?:locator\.\w+|page\.\w+|expect\(locator\)|Test)?\s*(?:Test\s+)?timeout\s+(?:of\s+)?\d+ms\s*exceeded|Timed\s+out\s+\d+ms",
     re.IGNORECASE,
 )
 
@@ -80,12 +80,16 @@ _LOCATION_PATTERN = re.compile(
     r"^(.+\.(?:py|ts|js|tsx|jsx)):(\d+):(?:\d+:)?\s*(TimeoutError|Error|AssertionError)?",
     re.MULTILINE,
 )
+_TS_HEADER_PATTERN = re.compile(
+    r"(?:›|\bat)\s*([^\s()]+\.(?:ts|js|tsx|jsx|py)):(\d+):(\d+)",
+    re.IGNORECASE,
+)
 _TS_AT_LOCATION_PATTERN = re.compile(
     r"at\s+(?:.+\s+)?\(?(.+\.(?:ts|js|py|tsx|jsx)):(\d+):(\d+)\)?",
     re.IGNORECASE,
 )
 _TS_LINE_SNIPPET_PATTERN = re.compile(
-    r">\s*(\d+)\s*\|\s*(?:await\s+)?(?:page|locator)",
+    r">\s*(\d+)\s*\|",
     re.IGNORECASE,
 )
 
@@ -156,38 +160,46 @@ def _clean_extracted_selector(sel: str) -> str:
     return s.strip()
 
 
-def _extract_selector(text: str) -> tuple[str, SelectorType]:
+def _extract_selector(text: str, is_ts: bool = False) -> tuple[str, SelectorType]:
     """Extract the broken selector and its type from error output.
 
     Tries multiple patterns in priority order and returns the first match.
+    Uses camelCase for TypeScript/JavaScript and snake_case for Python.
     """
-    # Try get_by_role first (most semantic)
+    # Try get_by_role / getByRole first (most semantic)
     m = _GET_BY_ROLE_PATTERN.search(text)
     if m:
         role = m.group(1)
         name = m.group(2) or ""
-        selector = f'get_by_role("{role}", name="{name}")' if name else f'get_by_role("{role}")'
+        if is_ts:
+            selector = f'getByRole("{role}", {{ name: "{name}" }})' if name else f'getByRole("{role}")'
+        else:
+            selector = f'get_by_role("{role}", name="{name}")' if name else f'get_by_role("{role}")'
         return selector, SelectorType.ROLE
 
-    # get_by_text
+    # get_by_text / getByText
     m = _GET_BY_TEXT_PATTERN.search(text)
     if m:
-        return f'get_by_text("{m.group(1)}")', SelectorType.TEXT
+        prefix = "getByText" if is_ts else "get_by_text"
+        return f'{prefix}("{m.group(1)}")', SelectorType.TEXT
 
-    # get_by_test_id
+    # get_by_test_id / getByTestId
     m = _GET_BY_TESTID_PATTERN.search(text)
     if m:
-        return f'get_by_test_id("{m.group(1)}")', SelectorType.TEST_ID
+        prefix = "getByTestId" if is_ts else "get_by_test_id"
+        return f'{prefix}("{m.group(1)}")', SelectorType.TEST_ID
 
-    # get_by_label
+    # get_by_label / getByLabel
     m = _GET_BY_LABEL_PATTERN.search(text)
     if m:
-        return f'get_by_label("{m.group(1)}")', SelectorType.LABEL
+        prefix = "getByLabel" if is_ts else "get_by_label"
+        return f'{prefix}("{m.group(1)}")', SelectorType.LABEL
 
-    # get_by_placeholder
+    # get_by_placeholder / getByPlaceholder
     m = _GET_BY_PLACEHOLDER_PATTERN.search(text)
     if m:
-        return f'get_by_placeholder("{m.group(1)}")', SelectorType.PLACEHOLDER
+        prefix = "getByPlaceholder" if is_ts else "get_by_placeholder"
+        return f'{prefix}("{m.group(1)}")', SelectorType.PLACEHOLDER
 
     # locator("selector")
     m = _LOCATOR_PATTERN.search(text)
@@ -207,18 +219,37 @@ def _extract_selector(text: str) -> tuple[str, SelectorType]:
 def _extract_line_number(error_text: str, test_file: Path) -> int:
     """Extract the failing line number from pytest or Playwright TS traceback output."""
     filename = test_file.name
+    is_ts = test_file.suffix.lower() in (".ts", ".js", ".tsx", ".jsx", ".mjs", ".cjs")
 
-    for m in _LOCATION_PATTERN.finditer(error_text):
-        if filename in m.group(1):
-            return int(m.group(2))
+    if is_ts:
+        # Playwright TS code frame "> 8 |" has the exact line of execution failure
+        snippet_match = _TS_LINE_SNIPPET_PATTERN.search(error_text)
+        if snippet_match:
+            return int(snippet_match.group(1))
 
-    for m in _TS_AT_LOCATION_PATTERN.finditer(error_text):
-        if filename in m.group(1):
-            return int(m.group(2))
+        for m in _TS_AT_LOCATION_PATTERN.finditer(error_text):
+            if filename in m.group(1):
+                return int(m.group(2))
 
-    snippet_match = _TS_LINE_SNIPPET_PATTERN.search(error_text)
-    if snippet_match:
-        return int(snippet_match.group(1))
+        for m in _LOCATION_PATTERN.finditer(error_text):
+            if filename in m.group(1):
+                return int(m.group(2))
+
+        for m in _TS_HEADER_PATTERN.finditer(error_text):
+            if filename in m.group(1):
+                return int(m.group(2))
+    else:
+        for m in _LOCATION_PATTERN.finditer(error_text):
+            if filename in m.group(1):
+                return int(m.group(2))
+
+        snippet_match = _TS_LINE_SNIPPET_PATTERN.search(error_text)
+        if snippet_match:
+            return int(snippet_match.group(1))
+
+        for m in _TS_AT_LOCATION_PATTERN.finditer(error_text):
+            if filename in m.group(1):
+                return int(m.group(2))
 
     # Fallback: look for any ":<number>:" pattern near the test filename
     fallback = re.search(
@@ -240,7 +271,7 @@ def parse_playwright_errors(
     Parameters
     ----------
     error_output:
-        The combined stdout+stderr from a failed ``pytest`` run.
+        The combined stdout+stderr from a failed ``pytest`` or ``playwright test`` run.
     test_file:
         Path to the test file that was executed.
 
@@ -253,10 +284,10 @@ def parse_playwright_errors(
     logger.debug("parser.start", test_file=str(test_file), output_len=len(error_output))
 
     failures: list[FailureContext] = []
+    is_ts = test_file.suffix.lower() in (".ts", ".js", ".tsx", ".jsx", ".mjs", ".cjs")
 
-    # Split on "FAILED" or "ERROR" markers to handle multiple failures.
-    # Playwright test output typically has sections separated by "_ _ _" or "==="
-    sections = re.split(r"_{3,}|={3,}", error_output)
+    # Split on "FAILED", "ERROR", pytest lines ("===" or "___"), or Playwright box-drawing "───" / "---"
+    sections = re.split(r"_{3,}|={3,}|\u2500{3,}|-{3,}", error_output)
 
     # Also try parsing the whole output as a single failure
     if len(sections) <= 1:
@@ -265,7 +296,7 @@ def parse_playwright_errors(
     seen_selectors: set[str] = set()
 
     for section in sections:
-        selector, sel_type = _extract_selector(section)
+        selector, sel_type = _extract_selector(section, is_ts=is_ts)
         if not selector or selector in seen_selectors:
             continue
 

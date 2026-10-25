@@ -106,3 +106,41 @@ def test_parse_playwright_typescript_output(tmp_path: Path) -> None:
     assert failures[0].selector_type == SelectorType.CSS
     assert failures[0].line_number == 3
 
+
+def test_parse_playwright_typescript_get_by_test_id(tmp_path: Path) -> None:
+    ts_file = tmp_path / "cart.spec.ts"
+    ts_file.write_text("await page.getByTestId('cart-btn').click();\n", encoding="utf-8")
+
+    ts_output = """
+    1) [chromium] › cart.spec.ts:1:9 › cart
+       Error: locator.click: Timeout 5000ms exceeded.
+       Call log:
+         - waiting for getByTestId('cart-btn')
+       > 1 | await page.getByTestId('cart-btn').click();
+       at cart.spec.ts:1:12
+    """
+    failures = parse_playwright_errors(ts_output, ts_file)
+    assert len(failures) == 1
+    assert "getByTestId" in failures[0].broken_selector
+    assert failures[0].selector_type == SelectorType.TEST_ID
+    assert failures[0].line_number == 1
+
+
+def test_parse_playwright_typescript_expect_codeframe(tmp_path: Path) -> None:
+    ts_file = tmp_path / "expect.spec.ts"
+    ts_file.write_text("// comment\nawait expect(page.locator('#status')).toBeVisible();\n", encoding="utf-8")
+
+    ts_output = """
+    1) [chromium] › expect.spec.ts:2:9 › status
+       Error: Timed out 5000ms waiting for expect(locator).toBeVisible()
+       Call log:
+         - waiting for locator('#status')
+       > 2 | await expect(page.locator('#status')).toBeVisible();
+       at expect.spec.ts:2:15
+    """
+    failures = parse_playwright_errors(ts_output, ts_file)
+    assert len(failures) == 1
+    assert failures[0].broken_selector == "#status"
+    assert failures[0].line_number == 2
+
+

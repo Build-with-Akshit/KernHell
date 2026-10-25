@@ -23,6 +23,61 @@ from kernhell.utils.file_utils import backup_file, read_file, write_file
 logger = structlog.get_logger()
 
 
+def _extract_testid_value(selector: str) -> Optional[str]:
+    """Extract raw test id from [data-testid="..."], data-testid=..., or getByTestId('...')."""
+    m = re.search(
+        r"""(?:\[?data-testid[=:]\s*["']?|(?:get_by_test_id|getByTestId)\(\s*["']?)([^"'\]\)]+)""",
+        selector,
+    )
+    if m:
+        return m.group(1).strip().strip("'\"")
+    return None
+
+
+def _extract_role_parts(selector: str) -> tuple[Optional[str], Optional[str]]:
+    """Extract role and name from role=button[name="..."] or getByRole('button', { name: '...' })."""
+    m = re.search(
+        r"""(?:role=|(?:get_by_role|getByRole)\(\s*["']?)(\w+)["']?(?:\s*,\s*(?:\{\s*name:\s*|name\s*=\s*)["']([^"']+)["']\s*\}?|\[name=["']([^"']+)["']\])?""",
+        selector,
+    )
+    if m:
+        return m.group(1), m.group(2) or m.group(3)
+    return None, None
+
+
+def _extract_text_value(selector: str) -> Optional[str]:
+    """Extract text from text="..." or getByText('...')."""
+    m = re.search(
+        r"""(?:text=|(?:get_by_text|getByText)\(\s*)["']?([^"'\)]+)["']?\s*\)?""",
+        selector,
+    )
+    if m:
+        return m.group(1).strip().strip("'\"")
+    return None
+
+
+def _extract_placeholder_value(selector: str) -> Optional[str]:
+    """Extract placeholder from [placeholder="..."] or getByPlaceholder('...')."""
+    m = re.search(
+        r"""(?:\[?placeholder[=:]\s*["']?|(?:get_by_placeholder|getByPlaceholder)\(\s*["']?)([^"'\]\)]+)""",
+        selector,
+    )
+    if m:
+        return m.group(1).strip().strip("'\"")
+    return None
+
+
+def _extract_label_value(selector: str) -> Optional[str]:
+    """Extract label from label="..." or getByLabel('...')."""
+    m = re.search(
+        r"""(?:label=|(?:get_by_label|getByLabel)\(\s*["']?)([^"'\]\)]+)""",
+        selector,
+    )
+    if m:
+        return m.group(1).strip().strip("'\"")
+    return None
+
+
 class SurgicalPatcher:
     """Surgically edits test files using Concrete Syntax Tree parsing."""
 
@@ -73,6 +128,7 @@ class SurgicalPatcher:
             old_selector=fix.old_selector,
             new_selector=fix.new_selector,
             target_line=line_number,
+            file_path=resolved,
         )
 
         write_file(resolved, patched_code)
@@ -85,12 +141,27 @@ class SurgicalPatcher:
         old_selector: str,
         new_selector: str,
         target_line: Optional[int] = None,
+        file_path: Optional[Path | str] = None,
     ) -> str:
-        """Apply CST surgical replacement to source code string.
+        """Apply surgical replacement to source code string.
 
-        Tries `libcst` first. If `libcst` is unavailable or parsing fails,
-        falls back to a high-precision line-scoped surgical string replacement.
+        For TypeScript/JavaScript files, directly uses high-precision surgical line transform.
+        For Python files, tries LibCST first, falling back to surgical line transform.
         """
+        is_ts = False
+        if file_path is not None:
+            suffix = Path(file_path).suffix.lower()
+            if suffix in (".ts", ".js", ".tsx", ".jsx", ".mjs", ".cjs"):
+                is_ts = True
+
+        if is_ts:
+            return self._surgical_line_transform(
+                source_code=source_code,
+                old_selector=old_selector,
+                new_selector=new_selector,
+                target_line=target_line,
+            )
+
         try:
             import libcst as cst
 
@@ -189,12 +260,110 @@ class SurgicalPatcher:
         """High-precision line-scoped replacement.
 
         Targets only the specific line (or lines near it) where the failure occurred.
-        Preserves indentation, comments, and spacing.
+        Preserves indentation, comments, semicolons, and spacing.
+        Supports both Python (snake_case) and TypeScript (camelCase).
         """
         raw_old = old_selector.strip("'\"")
         raw_new = new_selector.strip("'\"")
 
         def _replace_in_line(line: str, old_sel: str, new_sel: str) -> tuple[str, bool]:
+            # 1. getByTestId / get_by_test_id
+            m_testid = re.search(r"""((?:[\w.]+\.)?)(getByTestId|get_by_test_id)\(\s*(["'`])(.+?)\3\s*\)""", line)
+            if m_testid:
+                prefix = m_testid.group(1)
+                fn_name = m_testid.group(2)
+                quote = m_testid.group(3)
+                cur_id = m_testid.group(4)
+                old_testid = _extract_testid_value(old_sel) or old_sel.strip("'\"")
+                if old_testid == cur_id or cur_id in old_sel or "testid" in old_sel.lower():
+                    new_testid = _extract_testid_value(new_sel)
+                    if new_testid:
+                        replacement = f"{prefix}{fn_name}({quote}{new_testid}{quote})"
+                        return line.replace(m_testid.group(0), replacement), True
+                    else:
+                        safe_new = new_sel.strip("'\"")
+                        q = quote if quote in ("'", '"') and quote not in safe_new else ("'" if '"' in safe_new else '"')
+                        replacement = f"{prefix}locator({q}{safe_new}{q})"
+                        return line.replace(m_testid.group(0), replacement), True
+
+            # 2. getByRole / get_by_role
+            m_role = re.search(
+                r"""((?:[\w.]+\.)?)(getByRole|get_by_role)\(\s*(["'`])(\w+)\3(?:\s*,\s*(?:\{\s*name:\s*|name\s*=\s*)(["'`])([^"'`]+)\5\s*\}?)?\s*\)""",
+                line,
+            )
+            if m_role:
+                prefix = m_role.group(1)
+                fn_name = m_role.group(2)
+                new_role, new_name = _extract_role_parts(new_sel)
+                if new_role:
+                    if "getByRole" in fn_name:
+                        replacement = (
+                            f'{prefix}getByRole("{new_role}", {{ name: "{new_name}" }})'
+                            if new_name
+                            else f'{prefix}getByRole("{new_role}")'
+                        )
+                    else:
+                        replacement = (
+                            f'{prefix}get_by_role("{new_role}", name="{new_name}")'
+                            if new_name
+                            else f'{prefix}get_by_role("{new_role}")'
+                        )
+                    return line.replace(m_role.group(0), replacement), True
+                else:
+                    safe_new = new_sel.strip("'\"")
+                    q = "'" if '"' in safe_new else '"'
+                    replacement = f"{prefix}locator({q}{safe_new}{q})"
+                    return line.replace(m_role.group(0), replacement), True
+
+            # 3. getByText / get_by_text
+            m_text = re.search(r"""((?:[\w.]+\.)?)(getByText|get_by_text)\(\s*(["'`])(.+?)\3\s*\)""", line)
+            if m_text:
+                prefix = m_text.group(1)
+                fn_name = m_text.group(2)
+                quote = m_text.group(3)
+                new_text = _extract_text_value(new_sel)
+                if new_text:
+                    replacement = f"{prefix}{fn_name}({quote}{new_text}{quote})"
+                    return line.replace(m_text.group(0), replacement), True
+                else:
+                    safe_new = new_sel.strip("'\"")
+                    q = quote if quote in ("'", '"') and quote not in safe_new else ("'" if '"' in safe_new else '"')
+                    replacement = f"{prefix}locator({q}{safe_new}{q})"
+                    return line.replace(m_text.group(0), replacement), True
+
+            # 4. getByPlaceholder / get_by_placeholder
+            m_ph = re.search(r"""((?:[\w.]+\.)?)(getByPlaceholder|get_by_placeholder)\(\s*(["'`])(.+?)\3\s*\)""", line)
+            if m_ph:
+                prefix = m_ph.group(1)
+                fn_name = m_ph.group(2)
+                quote = m_ph.group(3)
+                new_ph = _extract_placeholder_value(new_sel)
+                if new_ph:
+                    replacement = f"{prefix}{fn_name}({quote}{new_ph}{quote})"
+                    return line.replace(m_ph.group(0), replacement), True
+                else:
+                    safe_new = new_sel.strip("'\"")
+                    q = quote if quote in ("'", '"') and quote not in safe_new else ("'" if '"' in safe_new else '"')
+                    replacement = f"{prefix}locator({q}{safe_new}{q})"
+                    return line.replace(m_ph.group(0), replacement), True
+
+            # 5. getByLabel / get_by_label
+            m_lbl = re.search(r"""((?:[\w.]+\.)?)(getByLabel|get_by_label)\(\s*(["'`])(.+?)\3\s*\)""", line)
+            if m_lbl:
+                prefix = m_lbl.group(1)
+                fn_name = m_lbl.group(2)
+                quote = m_lbl.group(3)
+                new_lbl = _extract_label_value(new_sel)
+                if new_lbl:
+                    replacement = f"{prefix}{fn_name}({quote}{new_lbl}{quote})"
+                    return line.replace(m_lbl.group(0), replacement), True
+                else:
+                    safe_new = new_sel.strip("'\"")
+                    q = quote if quote in ("'", '"') and quote not in safe_new else ("'" if '"' in safe_new else '"')
+                    replacement = f"{prefix}locator({q}{safe_new}{q})"
+                    return line.replace(m_lbl.group(0), replacement), True
+
+            # 6. Standard quoted selector replacement
             # Double-quoted selector
             if f'"{old_sel}"' in line:
                 if '"' in new_sel and "'" not in new_sel:
@@ -214,6 +383,10 @@ class SurgicalPatcher:
                     return line.replace(f"'{old_sel}'", f"'{escaped}'"), True
                 else:
                     return line.replace(f"'{old_sel}'", f"'{new_sel}'"), True
+
+            # Backtick-quoted selector
+            if f"`{old_sel}`" in line:
+                return line.replace(f"`{old_sel}`", f"`{new_sel}`"), True
 
             # Raw unquoted replacement fallback
             if old_sel in line:

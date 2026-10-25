@@ -110,3 +110,94 @@ test('checkout', async ({ page }: { page: any }) => {
     assert "// Step 2: Click checkout" in patched
     assert "async ({ page }: { page: any })" in patched
 
+
+def test_patcher_typescript_get_by_test_id(tmp_path: Path) -> None:
+    patcher = SurgicalPatcher()
+    ts_file = tmp_path / "test.spec.ts"
+    ts_file.write_text("await page.getByTestId('old-btn').click();\n", encoding="utf-8")
+
+    fix = SelectorFix(
+        old_selector="getByTestId('old-btn')",
+        new_selector='[data-testid="complete-order-btn"]',
+        strategy=SelectorStrategy.TEST_ID_MATCH,
+        confidence=0.98,
+    )
+    patched = patcher.patch_test_file(ts_file, fix, line_number=1, create_backup=False)
+    assert "await page.getByTestId('complete-order-btn').click();" in patched
+
+
+def test_patcher_typescript_get_by_test_id_to_css(tmp_path: Path) -> None:
+    patcher = SurgicalPatcher()
+    ts_file = tmp_path / "test.spec.ts"
+    ts_file.write_text("await page.getByTestId('old-btn').click();\n", encoding="utf-8")
+
+    fix = SelectorFix(
+        old_selector="getByTestId('old-btn')",
+        new_selector="#purchase-btn",
+        strategy=SelectorStrategy.CSS_FALLBACK,
+        confidence=0.95,
+    )
+    patched = patcher.patch_test_file(ts_file, fix, line_number=1, create_backup=False)
+    assert "await page.locator('#purchase-btn').click();" in patched
+
+
+def test_patcher_typescript_get_by_role(tmp_path: Path) -> None:
+    patcher = SurgicalPatcher()
+    ts_file = tmp_path / "test.spec.ts"
+    ts_file.write_text("await page.getByRole('button', { name: 'Old Order' }).click();\n", encoding="utf-8")
+
+    fix = SelectorFix(
+        old_selector="getByRole('button', { name: 'Old Order' })",
+        new_selector='role=button[name="Place Your Order"]',
+        strategy=SelectorStrategy.ROLE_MATCH,
+        confidence=0.96,
+    )
+    patched = patcher.patch_test_file(ts_file, fix, line_number=1, create_backup=False)
+    assert 'getByRole("button", { name: "Place Your Order" })' in patched
+
+
+def test_patcher_typescript_get_by_text(tmp_path: Path) -> None:
+    patcher = SurgicalPatcher()
+    ts_file = tmp_path / "test.spec.ts"
+    ts_file.write_text("await page.getByText('Old Text').click();\n", encoding="utf-8")
+
+    fix = SelectorFix(
+        old_selector="getByText('Old Text')",
+        new_selector='text="New Text"',
+        strategy=SelectorStrategy.TEXT_MATCH,
+        confidence=0.95,
+    )
+    patched = patcher.patch_test_file(ts_file, fix, line_number=1, create_backup=False)
+    assert "await page.getByText('New Text').click();" in patched
+
+
+def test_patcher_typescript_expect_locator(tmp_path: Path) -> None:
+    patcher = SurgicalPatcher()
+    ts_file = tmp_path / "test.spec.ts"
+    ts_file.write_text("await expect(page.locator('#old-btn')).toBeVisible();\n", encoding="utf-8")
+
+    fix = SelectorFix(
+        old_selector="#old-btn",
+        new_selector='[data-testid="new-btn"]',
+        strategy=SelectorStrategy.TEST_ID_MATCH,
+        confidence=0.97,
+    )
+    patched = patcher.patch_test_file(ts_file, fix, line_number=1, create_backup=False)
+    assert "await expect(page.locator('[data-testid=\"new-btn\"]')).toBeVisible();" in patched
+
+
+def test_patcher_typescript_backticks(tmp_path: Path) -> None:
+    patcher = SurgicalPatcher()
+    ts_file = tmp_path / "test.spec.ts"
+    ts_file.write_text("await page.click(`" + "#old-btn" + "`);\n", encoding="utf-8")
+
+    fix = SelectorFix(
+        old_selector="#old-btn",
+        new_selector="#new-btn",
+        strategy=SelectorStrategy.CSS_FALLBACK,
+        confidence=0.95,
+    )
+    patched = patcher.patch_test_file(ts_file, fix, line_number=1, create_backup=False)
+    assert "await page.click(`" + "#new-btn" + "`);" in patched
+
+
