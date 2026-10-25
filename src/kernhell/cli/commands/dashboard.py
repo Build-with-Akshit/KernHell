@@ -10,11 +10,9 @@ from pathlib import Path
 from typing import Optional
 
 import typer
-import uvicorn
 from rich.console import Console
 from rich.panel import Panel
 
-from kernhell.api.server import create_app
 from kernhell.cli.ui import print_banner
 from kernhell.core.config import load_config
 from kernhell.utils.logger import setup_logging
@@ -50,6 +48,17 @@ def dashboard_command(
             webbrowser.open(f"{url}/docs")
         except Exception:
             pass
+
+    try:
+        import uvicorn
+        from kernhell.api.server import create_app
+    except ImportError:
+        console.print(
+            "\n[bold red]Error:[/bold red] Mission Control Dashboard requires [bold cyan]fastapi[/bold cyan] and [bold cyan]uvicorn[/bold cyan].\n"
+            "Please install them via:\n"
+            "  [green]pip install 'kernhell[dashboard]'[/green] or [green]pip install fastapi uvicorn[/green]\n"
+        )
+        raise typer.Exit(code=1)
 
     app = create_app(cfg)
     uvicorn.run(app, host=host, port=port, log_level="warning")

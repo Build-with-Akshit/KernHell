@@ -32,7 +32,7 @@ export default function Navbar() {
                   KERN<span className="text-brand-red">HELL</span>
                 </span>
                 <span className="px-1.5 py-0.5 text-[10px] uppercase font-mono font-semibold tracking-wider bg-surface-border text-brand-cyan rounded border border-brand-cyan/20">
-                  v0.1.1
+                  v0.1.2
                 </span>
               </div>
               <p className="text-[11px] text-gray-400 font-sans hidden sm:block">
