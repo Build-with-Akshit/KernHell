@@ -63,6 +63,8 @@ class HealingReporter:
         table.add_column("Source", style="yellow")
         table.add_column("Verified", justify="center")
 
+        from rich.markup import escape
+
         for i, res in enumerate(report.results, start=1):
             if res.fix:
                 source = "Semantic Cache" if res.from_cache else "AI Healer"
@@ -70,9 +72,9 @@ class HealingReporter:
                 conf_str = f"{int(res.fix.confidence * 100)}%"
                 table.add_row(
                     str(i),
-                    res.failure.broken_selector,
-                    res.fix.new_selector,
-                    res.fix.strategy.value,
+                    escape(res.failure.broken_selector),
+                    escape(res.fix.new_selector),
+                    escape(res.fix.strategy.value),
                     conf_str,
                     source,
                     verified,
@@ -80,12 +82,12 @@ class HealingReporter:
             else:
                 table.add_row(
                     str(i),
-                    res.failure.broken_selector,
+                    escape(res.failure.broken_selector),
                     "[yellow](SKIPPED)[/yellow]",
                     "-",
                     "-",
                     "-",
-                    f"[dim]{res.skip_reason[:30]}...[/dim]" if res.skip_reason else "-",
+                    escape(f"{res.skip_reason[:30]}...") if res.skip_reason else "-",
                 )
 
         console.print(table)

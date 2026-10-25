@@ -134,6 +134,9 @@ class ScannerRunner:
             failures=len(failures),
             has_dom=bool(failures[0].live_dom) if failures else False,
         )
+
+        return failures
+
     def _run_test_process(self, test_file: Path) -> str | None:
         """Run the test subprocess (Python pytest or TypeScript Playwright test)."""
         if test_file.suffix.lower() in (".ts", ".js", ".tsx", ".jsx", ".mjs", ".cjs"):

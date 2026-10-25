@@ -31,7 +31,7 @@ class LLMConfig(BaseModel):
     """LLM provider settings."""
 
     provider: str = "gemini"
-    model: str = "gemini-1.5-flash"
+    model: str = "gemini-2.5-flash"
     api_key: Optional[str] = None
     temperature: float = 0.1
     max_tokens: int = 2048

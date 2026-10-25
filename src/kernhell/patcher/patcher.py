@@ -144,9 +144,23 @@ class SurgicalPatcher:
                 # Value includes surrounding quotes, e.g. '"#buy-now"'
                 val = original_node.evaluated_value
                 if val == raw_old:
-                    quote = original_node.value[0]
-                    # Format replacement preserving quote style
-                    new_val = f"{quote}{new_selector.strip('\'"')}{quote}"
+                    raw_new = new_selector.strip("'\"")
+                    # Safe quoting: prevent clashing with inner quotes (e.g. [data-testid="..."])
+                    if '"' in raw_new and "'" not in raw_new:
+                        new_val = f"'{raw_new}'"
+                    elif "'" in raw_new and '"' not in raw_new:
+                        new_val = f'"{raw_new}"'
+                    else:
+                        quote = original_node.value[0]
+                        if quote in raw_new:
+                            alt_quote = "'" if quote == '"' else '"'
+                            if alt_quote not in raw_new:
+                                new_val = f"{alt_quote}{raw_new}{alt_quote}"
+                            else:
+                                escaped = raw_new.replace(quote, f"\\{quote}")
+                                new_val = f"{quote}{escaped}{quote}"
+                        else:
+                            new_val = f"{quote}{raw_new}{quote}"
                     self.replaced_count += 1
                     return updated_node.with_changes(value=new_val)
                 return updated_node
@@ -180,30 +194,60 @@ class SurgicalPatcher:
         raw_old = old_selector.strip("'\"")
         raw_new = new_selector.strip("'\"")
 
+        def _replace_in_line(line: str, old_sel: str, new_sel: str) -> tuple[str, bool]:
+            # Double-quoted selector
+            if f'"{old_sel}"' in line:
+                if '"' in new_sel and "'" not in new_sel:
+                    return line.replace(f'"{old_sel}"', f"'{new_sel}'"), True
+                elif '"' in new_sel and "'" in new_sel:
+                    escaped = new_sel.replace('"', '\\"')
+                    return line.replace(f'"{old_sel}"', f'"{escaped}"'), True
+                else:
+                    return line.replace(f'"{old_sel}"', f'"{new_sel}"'), True
+
+            # Single-quoted selector
+            if f"'{old_sel}'" in line:
+                if "'" in new_sel and '"' not in new_sel:
+                    return line.replace(f"'{old_sel}'", f'"{new_sel}"'), True
+                elif "'" in new_sel and '"' in new_sel:
+                    escaped = new_sel.replace("'", "\\'")
+                    return line.replace(f"'{old_sel}'", f"'{escaped}'"), True
+                else:
+                    return line.replace(f"'{old_sel}'", f"'{new_sel}'"), True
+
+            # Raw unquoted replacement fallback
+            if old_sel in line:
+                return line.replace(old_sel, new_sel), True
+
+            return line, False
+
         lines = source_code.splitlines(keepends=True)
         replaced = False
 
         if target_line is not None and 1 <= target_line <= len(lines):
             # Try target line first
             idx = target_line - 1
-            if raw_old in lines[idx]:
-                lines[idx] = lines[idx].replace(raw_old, raw_new)
+            new_line, did_replace = _replace_in_line(lines[idx], raw_old, raw_new)
+            if did_replace:
+                lines[idx] = new_line
                 replaced = True
             else:
                 # Search window of ±5 lines around target_line
                 start = max(0, idx - 5)
                 end = min(len(lines), idx + 6)
                 for i in range(start, end):
-                    if raw_old in lines[i]:
-                        lines[i] = lines[i].replace(raw_old, raw_new)
+                    new_line, did_replace = _replace_in_line(lines[i], raw_old, raw_new)
+                    if did_replace:
+                        lines[i] = new_line
                         replaced = True
                         break
 
         # Fallback: replace first occurrence across whole file
         if not replaced:
             for i, line in enumerate(lines):
-                if raw_old in line:
-                    lines[i] = line.replace(raw_old, raw_new)
+                new_line, did_replace = _replace_in_line(line, raw_old, raw_new)
+                if did_replace:
+                    lines[i] = new_line
                     replaced = True
                     break
 

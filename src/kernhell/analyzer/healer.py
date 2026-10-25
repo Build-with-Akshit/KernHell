@@ -41,6 +41,50 @@ def _clean_json_response(raw_text: str) -> str:
     return raw
 
 
+def normalize_selector(raw_selector: str) -> str:
+    """Normalize proposed selector to a clean Playwright selector expression."""
+    s = raw_selector.strip().strip("'\"")
+
+    # If it's page.get_by_test_id("foo") or getByTestId("foo")
+    m = re.search(r"""(?:page\.)?(?:get_by_test_id|getByTestId)\(\s*["']([^"']+)["']\s*\)""", s)
+    if m:
+        return f'[data-testid="{m.group(1)}"]'
+
+    # If it's page.get_by_role("button", name="foo") or getByRole("button", { name: "foo" })
+    m = re.search(
+        r"""(?:page\.)?(?:get_by_role|getByRole)\(\s*["'](\w+)["'](?:\s*,\s*(?:\{\s*name:\s*|name\s*=\s*)["']([^"']+)["']\s*\}?)?\s*\)""",
+        s,
+    )
+    if m:
+        role = m.group(1)
+        name = m.group(2)
+        if name:
+            return f'role={role}[name="{name}"]'
+        return f'role={role}'
+
+    # If it's page.get_by_text("foo") or getByText("foo")
+    m = re.search(r"""(?:page\.)?(?:get_by_text|getByText)\(\s*["']([^"']+)["']\s*\)""", s)
+    if m:
+        return f'text="{m.group(1)}"'
+
+    # If it's page.get_by_label("foo") or getByLabel("foo")
+    m = re.search(r"""(?:page\.)?(?:get_by_label|getByLabel)\(\s*["']([^"']+)["']\s*\)""", s)
+    if m:
+        return f'label="{m.group(1)}"'
+
+    # If it's page.get_by_placeholder("foo") or getByPlaceholder("foo")
+    m = re.search(r"""(?:page\.)?(?:get_by_placeholder|getByPlaceholder)\(\s*["']([^"']+)["']\s*\)""", s)
+    if m:
+        return f'[placeholder="{m.group(1)}"]'
+
+    # If it's page.locator("foo") or locator("foo")
+    m = re.search(r"""(?:page\.)?locator\(\s*["']([^"']+)["']\s*\)""", s)
+    if m:
+        return m.group(1)
+
+    return s
+
+
 def verify_dom_presence(new_selector: str, dom_html: str) -> bool:
     """Check if the proposed selector has matching evidence in the pruned DOM.
 
@@ -53,22 +97,25 @@ def verify_dom_presence(new_selector: str, dom_html: str) -> bool:
     dom_lower = dom_html.lower()
 
     # 1. Check get_by_test_id("foo") or getByTestId("foo") or [data-testid="foo"]
-    testid_match = re.search(r"""(?:get_by_test_id|getByTestId|data-testid[=:])\s*\(?["']?([^"'\)]+)""", new_selector)
+    testid_match = re.search(r"""(?:get_by_test_id|getByTestId|data-testid[=:])\s*\(?["']?([^"'\)\]]+)""", new_selector)
     if testid_match:
         testid = testid_match.group(1).lower()
         return testid in dom_lower
 
-    # 2. Check get_by_role("button", name="...") or getByRole("button", { name: "..." })
-    role_match = re.search(r"""(?:get_by_role|getByRole)\(\s*["'](\w+)["'](?:\s*,\s*(?:\{\s*name:\s*|name\s*=\s*)["']([^"']+)["']\s*\}?)?""", new_selector)
+    # 2. Check get_by_role("button", name="...") or getByRole("button", { name: "..." }) or role=button[name="..."]
+    role_match = re.search(
+        r"""(?:get_by_role|getByRole|\brole=)\(?\s*["']?(\w+)["']?(?:\s*,\s*(?:\{\s*name:\s*|name\s*=\s*)["']([^"']+)["']\s*\}?|\[name=["']([^"']+)["']\])?""",
+        new_selector,
+    )
     if role_match:
         role = role_match.group(1).lower()
-        name = role_match.group(2).lower() if role_match.group(2) else ""
+        name = (role_match.group(2) or role_match.group(3) or "").lower()
         if name:
             return name in dom_lower and (role in dom_lower or f"<{role}" in dom_lower)
         return role in dom_lower or f"<{role}" in dom_lower
 
-    # 3. Check get_by_text("...") or getByText("...")
-    text_match = re.search(r"""(?:get_by_text|getByText)\(\s*["']([^"']+)["']""", new_selector)
+    # 3. Check get_by_text("...") or getByText("...") or text="..."
+    text_match = re.search(r"""(?:get_by_text|getByText|\btext=)\(?\s*["']([^"']+)["']""", new_selector)
     if text_match:
         text = text_match.group(1).lower()
         return text in dom_lower
@@ -86,6 +133,7 @@ def verify_dom_presence(new_selector: str, dom_html: str) -> bool:
     # Fallback check: ensure significant selector tokens exist in DOM
     tokens = [t for t in re.split(r"[#.\s\[\]\"'()=]", new_selector) if len(t) > 2]
     return any(token.lower() in dom_lower for token in tokens)
+
 
 
 class SelectorHealer:
@@ -141,6 +189,7 @@ class SelectorHealer:
             data = json.loads(clean_json)
 
             new_selector = data.get("new_selector", "").strip()
+            new_selector = normalize_selector(new_selector)
             strategy_str = data.get("strategy", "css_fallback").lower()
             confidence = float(data.get("confidence", 0.0))
             reasoning = data.get("reasoning", "")
@@ -234,15 +283,23 @@ class SelectorHealer:
         # If DOM has purchase-btn or complete-order-btn, return semantic locator
         if "complete-order-btn" in prompt_lower:
             return json.dumps({
-                "new_selector": "page.get_by_test_id(\"complete-order-btn\")",
+                "new_selector": '[data-testid="complete-order-btn"]',
                 "strategy": "test_id_match",
                 "confidence": 0.96,
                 "reasoning": "Element has explicit data-testid='complete-order-btn' in DOM.",
             })
 
-        if "purchase-btn" in prompt_lower or "place your order" in prompt_lower:
+        if "purchase-btn" in prompt_lower:
             return json.dumps({
-                "new_selector": "page.get_by_role(\"button\", name=\"Place Your Order\")",
+                "new_selector": "#purchase-btn",
+                "strategy": "css_fallback",
+                "confidence": 0.95,
+                "reasoning": "Mapped selector to matching button ID found in DOM.",
+            })
+
+        if "place your order" in prompt_lower:
+            return json.dumps({
+                "new_selector": 'role=button[name="Place Your Order"]',
                 "strategy": "role_match",
                 "confidence": 0.95,
                 "reasoning": "Element matches button role with visible accessible label 'Place Your Order'.",
