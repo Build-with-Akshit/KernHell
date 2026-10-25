@@ -207,17 +207,25 @@ class SelectorHealer:
 
         model_name = self.llm_cfg.get_litellm_model_name()
 
-        response = litellm.completion(
-            model=model_name,
-            api_key=api_key,
-            temperature=self.llm_cfg.temperature,
-            max_tokens=self.llm_cfg.max_tokens,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-        )
-        return response.choices[0].message.content or ""
+        try:
+            response = litellm.completion(
+                model=model_name,
+                api_key=api_key,
+                temperature=self.llm_cfg.temperature,
+                max_tokens=self.llm_cfg.max_tokens,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+            )
+            return response.choices[0].message.content or ""
+        except Exception as exc:
+            logger.warning(
+                "healer.llm_call_failed.falling_back_to_heuristic",
+                model=model_name,
+                error=str(exc),
+            )
+            return self._heuristic_healing_fallback(user_prompt)
 
     def _heuristic_healing_fallback(self, user_prompt: str) -> str:
         """Deterministic heuristic fallback when running offline."""

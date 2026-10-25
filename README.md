@@ -55,12 +55,32 @@ flowchart TD
 
 ## 📦 Installation
 
+### Quick Install (from PyPI)
+
+```bash
+pip install kernhell
+```
+
+That's it! Now run `kernhell --help` to get started.
+
+### With Optional Dependencies
+
+```bash
+# Install with dashboard support
+pip install kernhell[dashboard]
+
+# Install everything (dev + dashboard)
+pip install kernhell[all]
+```
+
+### 🔧 Developer Setup (Contributing)
+
 ```bash
 # Clone the repository
 git clone https://github.com/riteshkumar072/KernHell.git
 cd KernHell
 
-# Install Python package in editable mode with all dependencies
+# Install in editable mode with all dev dependencies
 pip install -e ".[all]"
 
 # Install Mission Control dashboard dependencies
