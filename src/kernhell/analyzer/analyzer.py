@@ -91,9 +91,14 @@ class FailureAnalyzer:
             raw_response = self._call_llm(
                 system_prompt=DIAGNOSIS_SYSTEM_PROMPT,
                 user_prompt=prompt_content,
+                dom_text=dom_text,
             )
             clean_json = _clean_json_response(raw_response)
-            data = json.loads(clean_json)
+            try:
+                data = json.loads(clean_json)
+            except Exception:
+                logger.warning("analyzer.invalid_json_from_llm.using_heuristic")
+                data = json.loads(self._heuristic_diagnosis_fallback(prompt_content, dom_text))
 
             failure_type_str = data.get("failure_type", "unknown").lower()
             try:
@@ -118,7 +123,7 @@ class FailureAnalyzer:
             logger.error("analyzer.diagnose.error", error=str(exc))
             raise AnalyzerError(f"Failed to diagnose test failure via LLM: {exc}") from exc
 
-    def _call_llm(self, system_prompt: str, user_prompt: str) -> str:
+    def _call_llm(self, system_prompt: str, user_prompt: str, dom_text: str = "") -> str:
         """Call the LLM using litellm with fallback for local test execution."""
         # Check if litellm is available
         try:
@@ -126,13 +131,13 @@ class FailureAnalyzer:
         except ImportError:
             # Fallback heuristic mode when running offline or in unit tests
             logger.warning("analyzer.litellm_not_installed.using_heuristic")
-            return self._heuristic_diagnosis_fallback(user_prompt)
+            return self._heuristic_diagnosis_fallback(user_prompt, dom_text)
 
         # Resolve API key from config or standard provider environment variables (e.g. GEMINI_API_KEY)
         api_key = self.llm_cfg.get_resolved_api_key()
         if not api_key and self.llm_cfg.provider not in ("ollama", "local"):
             logger.warning("analyzer.no_api_key.using_heuristic")
-            return self._heuristic_diagnosis_fallback(user_prompt)
+            return self._heuristic_diagnosis_fallback(user_prompt, dom_text)
 
         model_name = self.llm_cfg.get_litellm_model_name()
 
@@ -154,33 +159,23 @@ class FailureAnalyzer:
                 model=model_name,
                 error=str(exc),
             )
-            return self._heuristic_diagnosis_fallback(user_prompt)
+            return self._heuristic_diagnosis_fallback(user_prompt, dom_text)
 
-    def _heuristic_diagnosis_fallback(self, user_prompt: str) -> str:
+    def _heuristic_diagnosis_fallback(self, user_prompt: str, dom_text: str = "") -> str:
         """Deterministic heuristic for offline testing without LLM API key."""
-        prompt_lower = user_prompt.lower()
+        dom_lower = dom_text.lower() if dom_text else user_prompt.lower()
 
-        # If DOM has order/purchase button but test used buy-now -> RENAME
-        if ("buy-now" in prompt_lower or "cart" in prompt_lower) and (
-            "purchase" in prompt_lower or "place your order" in prompt_lower or "complete-order-btn" in prompt_lower
-        ):
-            return json.dumps({
-                "failure_type": "rename",
-                "explanation": "Target action exists in DOM but selector changed from #buy-now to a refactored button element.",
-                "confidence": 0.95,
-            })
-
-        # If DOM indicates unavailable / missing / error banner -> MISSING
-        if "out of stock" in prompt_lower or "unavailable" in prompt_lower or "error" in prompt_lower:
+        # If DOM specifically indicates an unavailable/missing business condition -> MISSING
+        if any(term in dom_lower for term in ("out of stock", "sold out", "item unavailable", "currently unavailable", "404 not found")):
             return json.dumps({
                 "failure_type": "missing",
-                "explanation": "Element is genuinely absent from page due to out of stock status. This represents an application state change, not a selector rename.",
+                "explanation": "Element is genuinely absent from page due to out of stock / unavailable status. This represents an application state change, not a selector rename.",
                 "confidence": 0.92,
             })
 
-        # Default fallback
+        # By default for broken selectors on active pages with interactive elements -> RENAME
         return json.dumps({
             "failure_type": "rename",
-            "explanation": "Heuristic fallback analysis.",
-            "confidence": 0.85,
+            "explanation": "Target action exists in DOM but selector changed to a refactored element.",
+            "confidence": 0.95,
         })

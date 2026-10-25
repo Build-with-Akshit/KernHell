@@ -35,13 +35,14 @@ _TIMEOUT_PATTERN = re.compile(
 
 # Matches: "waiting for locator("button#buy-now")" or 'locator("#buy-now")'
 _LOCATOR_PATTERN = re.compile(
-    r"""locator\(\s*(.+?)\s*\)""",
+    r"""locator\(\s*(?:(["'`])(.*?)\1|([^\)]+))\s*\)""",
     re.IGNORECASE,
 )
 
 # Matches: page.click("#buy-now") or await page.fill("input.email", ...)
+# Uses backreference \1 to match the opening quote exactly, preventing truncation when inner quotes exist (e.g. '[data-testid="foo"]')
 _PAGE_ACTION_PATTERN = re.compile(
-    r"""(?:await\s+)?page\.(?:click|fill|type|check|uncheck|select_option|selectOption|hover|dblclick|focus)\(\s*["'`](.+?)["'`]""",
+    r"""(?:await\s+)?page\.(?:click|fill|type|check|uncheck|select_option|selectOption|hover|dblclick|focus)\(\s*(["'`])(.*?)\1""",
     re.IGNORECASE,
 )
 
@@ -204,13 +205,14 @@ def _extract_selector(text: str, is_ts: bool = False) -> tuple[str, SelectorType
     # locator("selector")
     m = _LOCATOR_PATTERN.search(text)
     if m:
-        sel = _clean_extracted_selector(m.group(1))
+        raw_sel = m.group(2) if m.group(2) is not None else m.group(3)
+        sel = _clean_extracted_selector(raw_sel or "")
         return sel, classify_selector(sel)
 
     # page.click("selector") etc.
     m = _PAGE_ACTION_PATTERN.search(text)
     if m:
-        sel = _clean_extracted_selector(m.group(1))
+        sel = _clean_extracted_selector(m.group(2))
         return sel, classify_selector(sel)
 
     return "", SelectorType.UNKNOWN
@@ -286,10 +288,11 @@ def parse_playwright_errors(
     failures: list[FailureContext] = []
     is_ts = test_file.suffix.lower() in (".ts", ".js", ".tsx", ".jsx", ".mjs", ".cjs")
 
-    # Split on "FAILED", "ERROR", pytest lines ("===" or "___"), or Playwright box-drawing "───" / "---"
-    sections = re.split(r"_{3,}|={3,}|\u2500{3,}|-{3,}", error_output)
-
-    # Also try parsing the whole output as a single failure
+    # Split on pytest failure blocks: "_{3,} test_name _{3,}" or "={3,} FAILURES ={3,}"
+    # or Playwright box-drawing "───" (DO NOT split on single "---" as NumPy docstrings use dashes)
+    sections = re.split(r"_{3,}\s*.*?\s*_{3,}|\u2500{3,}|={3,}\s*FAILURES\s*={3,}", error_output)
+    if len(sections) <= 1:
+        sections = re.split(r"_{3,}|\u2500{3,}", error_output)
     if len(sections) <= 1:
         sections = [error_output]
 

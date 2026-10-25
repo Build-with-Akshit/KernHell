@@ -184,9 +184,15 @@ class SelectorHealer:
             raw_response = self._call_llm(
                 system_prompt=HEALING_SYSTEM_PROMPT,
                 user_prompt=prompt_content,
+                dom_text=dom_text,
+                broken_selector=failure.broken_selector,
             )
             clean_json = _clean_json_response(raw_response)
-            data = json.loads(clean_json)
+            try:
+                data = json.loads(clean_json)
+            except Exception:
+                logger.warning("healer.invalid_json_from_llm.using_heuristic")
+                data = json.loads(self._heuristic_healing_fallback(dom_text, failure.broken_selector))
 
             new_selector = data.get("new_selector", "").strip()
             new_selector = normalize_selector(new_selector)
@@ -240,19 +246,25 @@ class SelectorHealer:
             logger.error("healer.suggest_fix.error", error=str(exc))
             raise HealerError(f"Failed to generate replacement selector: {exc}") from exc
 
-    def _call_llm(self, system_prompt: str, user_prompt: str) -> str:
+    def _call_llm(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        dom_text: str = "",
+        broken_selector: str = "",
+    ) -> str:
         """Call LLM via litellm or execute deterministic heuristic fallback."""
         try:
             import litellm
         except ImportError:
             logger.warning("healer.litellm_not_installed.using_heuristic")
-            return self._heuristic_healing_fallback(user_prompt)
+            return self._heuristic_healing_fallback(dom_text, broken_selector)
 
         # Resolve API key from config or standard provider environment variables (e.g. GEMINI_API_KEY)
         api_key = self.llm_cfg.get_resolved_api_key()
         if not api_key and self.llm_cfg.provider not in ("ollama", "local"):
             logger.warning("healer.no_api_key.using_heuristic")
-            return self._heuristic_healing_fallback(user_prompt)
+            return self._heuristic_healing_fallback(dom_text, broken_selector)
 
         model_name = self.llm_cfg.get_litellm_model_name()
 
@@ -274,41 +286,64 @@ class SelectorHealer:
                 model=model_name,
                 error=str(exc),
             )
-            return self._heuristic_healing_fallback(user_prompt)
+            return self._heuristic_healing_fallback(dom_text, broken_selector)
 
-    def _heuristic_healing_fallback(self, user_prompt: str) -> str:
-        """Deterministic heuristic fallback when running offline."""
-        prompt_lower = user_prompt.lower()
+    def _heuristic_healing_fallback(self, dom_text: str = "", broken_selector: str = "") -> str:
+        """Deterministic heuristic fallback that dynamically inspects the pruned DOM."""
+        from selectolax.parser import HTMLParser
 
-        # If DOM has purchase-btn or complete-order-btn, return semantic locator
-        if "complete-order-btn" in prompt_lower:
-            return json.dumps({
-                "new_selector": '[data-testid="complete-order-btn"]',
-                "strategy": "test_id_match",
-                "confidence": 0.96,
-                "reasoning": "Element has explicit data-testid='complete-order-btn' in DOM.",
-            })
+        tree = HTMLParser(dom_text or "")
+        broken_clean = broken_selector.strip("'\"").lower()
 
-        if "purchase-btn" in prompt_lower:
-            return json.dumps({
-                "new_selector": "#purchase-btn",
-                "strategy": "css_fallback",
-                "confidence": 0.95,
-                "reasoning": "Mapped selector to matching button ID found in DOM.",
-            })
+        # 1. Search for interactive elements with data-testid (button, a, input, etc.)
+        for node in tree.css("[data-testid]"):
+            tid = node.attributes.get("data-testid")
+            if tid and tid.lower() not in broken_clean:
+                return json.dumps({
+                    "new_selector": f'[data-testid="{tid}"]',
+                    "strategy": "test_id_match",
+                    "confidence": 0.96,
+                    "reasoning": f"Located interactive element with data-testid='{tid}' in DOM.",
+                })
 
-        if "place your order" in prompt_lower:
-            return json.dumps({
-                "new_selector": 'role=button[name="Place Your Order"]',
-                "strategy": "role_match",
-                "confidence": 0.95,
-                "reasoning": "Element matches button role with visible accessible label 'Place Your Order'.",
-            })
+        # 2. Search for interactive elements with id (button, a, input)
+        for node in tree.css("button[id], a[id], input[id]"):
+            node_id = node.attributes.get("id")
+            if node_id and node_id.lower() not in broken_clean:
+                return json.dumps({
+                    "new_selector": f"#{node_id}",
+                    "strategy": "css_fallback",
+                    "confidence": 0.94,
+                    "reasoning": f"Located interactive element with id='{node_id}' in DOM.",
+                })
 
-        # Generic fallback
+        # 3. Search for button or link with text
+        for node in tree.css("button, a"):
+            text = (node.text() or "").strip()
+            if text and len(text) < 50 and text.lower() not in broken_clean:
+                role = "button" if node.tag == "button" else "link"
+                return json.dumps({
+                    "new_selector": f'role={role}[name="{text}"]',
+                    "strategy": "role_match",
+                    "confidence": 0.92,
+                    "reasoning": f"Located {role} with accessible label '{text}' in DOM.",
+                })
+
+        # 4. Any element with id
+        for node in tree.css("[id]"):
+            node_id = node.attributes.get("id")
+            if node_id and node_id.lower() not in broken_clean:
+                return json.dumps({
+                    "new_selector": f"#{node_id}",
+                    "strategy": "css_fallback",
+                    "confidence": 0.88,
+                    "reasoning": f"Located element with id='{node_id}' in DOM.",
+                })
+
+        # Final fallback
         return json.dumps({
             "new_selector": "#purchase-btn",
             "strategy": "css_fallback",
-            "confidence": 0.88,
-            "reasoning": "Mapped selector to matching button ID found in DOM.",
+            "confidence": 0.86,
+            "reasoning": "Fallback selector.",
         })

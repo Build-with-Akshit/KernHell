@@ -44,8 +44,11 @@ def test_orchestrator_scan_with_failures(
 def test_orchestrator_heal_report_generation(
     tmp_path: Path,
     sample_dom_html: str,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     cfg = KernHellConfig()
+    cfg.llm.api_key = None
     cfg.cache.cache_dir = str(tmp_path / "cache")
     orchestrator = HealingOrchestrator(cfg)
 
@@ -72,8 +75,11 @@ def test_orchestrator_heal_report_generation(
 def test_orchestrator_heal_skips_missing_bugs(
     tmp_path: Path,
     sample_dom_missing_html: str,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     cfg = KernHellConfig()
+    cfg.llm.api_key = None
     cfg.cache.cache_dir = str(tmp_path / "cache")
     orchestrator = HealingOrchestrator(cfg)
 

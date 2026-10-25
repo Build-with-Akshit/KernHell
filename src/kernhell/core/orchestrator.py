@@ -143,7 +143,10 @@ class HealingOrchestrator:
             page_url=failure.page_url,
         )
 
-        if cached_fix is not None:
+        if (
+            cached_fix is not None
+            and cached_fix.new_selector.strip("'\"") != failure.broken_selector.strip("'\"")
+        ):
             logger.info(
                 "orchestrator.cache_hit_applying",
                 selector=failure.broken_selector,
