@@ -75,6 +75,8 @@ def heal_command(
 ) -> None:
     """Autonomously detect and heal broken Playwright selectors."""
     cfg = load_config(config_path)
+    from kernhell.cli.commands.setup import check_first_run_setup
+    cfg = check_first_run_setup(console, cfg)
     log_level = "DEBUG" if verbose else cfg.logging.level
     setup_logging(level=log_level, json_output=json_log or cfg.logging.json_output)
 

@@ -142,16 +142,20 @@ class FailureAnalyzer:
         model_name = self.llm_cfg.get_litellm_model_name()
 
         try:
-            response = litellm.completion(
-                model=model_name,
-                api_key=api_key,
-                temperature=self.llm_cfg.temperature,
-                max_tokens=self.llm_cfg.max_tokens,
-                messages=[
+            kwargs = {
+                "model": model_name,
+                "api_key": api_key,
+                "temperature": self.llm_cfg.temperature,
+                "max_tokens": self.llm_cfg.max_tokens,
+                "messages": [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},
                 ],
-            )
+            }
+            if self.llm_cfg.api_base:
+                kwargs["api_base"] = self.llm_cfg.api_base
+
+            response = litellm.completion(**kwargs)
             return response.choices[0].message.content or ""
         except Exception as exc:
             logger.warning(

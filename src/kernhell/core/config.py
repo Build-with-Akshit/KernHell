@@ -33,6 +33,7 @@ class LLMConfig(BaseModel):
     provider: str = "gemini"
     model: str = "gemini-2.5-flash"
     api_key: Optional[str] = None
+    api_base: Optional[str] = None
     temperature: float = 0.1
     max_tokens: int = 2048
 
@@ -52,6 +53,10 @@ class LLMConfig(BaseModel):
             return os.environ.get("OPENAI_API_KEY")
         elif prov == "anthropic":
             return os.environ.get("ANTHROPIC_API_KEY")
+        elif prov == "mistral":
+            return os.environ.get("MISTRAL_API_KEY")
+        elif prov in ("ollama", "local"):
+            return "local-no-key-required"
         return None
 
     def get_litellm_model_name(self) -> str:
@@ -133,8 +138,13 @@ _CONFIG_FILENAMES = [".kernhellrc.toml", "kernhell.toml"]
 
 
 def _find_config_file() -> Optional[Path]:
-    """Search current dir, then home dir for a config file."""
-    for directory in [Path.cwd(), Path.home()]:
+    """Search current dir, ~/.kernhell, then home dir for a config file."""
+    search_dirs = [
+        Path.cwd(),
+        Path.home() / ".kernhell",
+        Path.home(),
+    ]
+    for directory in search_dirs:
         for name in _CONFIG_FILENAMES:
             candidate = directory / name
             if candidate.is_file():

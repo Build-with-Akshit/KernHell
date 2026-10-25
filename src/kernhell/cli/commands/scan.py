@@ -56,6 +56,8 @@ def scan_command(
 ) -> None:
     """Scan a Playwright test file, intercepting selector failures and capturing DOM."""
     cfg = load_config(config_path)
+    from kernhell.cli.commands.setup import check_first_run_setup
+    cfg = check_first_run_setup(console, cfg)
     log_level = "DEBUG" if verbose else cfg.logging.level
     setup_logging(level=log_level, json_output=json_log or cfg.logging.json_output)
 
