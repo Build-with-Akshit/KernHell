@@ -23,8 +23,10 @@ share/python-wheels/
 *.egg
 MANIFEST
 
-# Virtual Environments
+# Virtual Environments & Secrets
 .env
+.env.*
+!.env.example
 .venv
 env/
 venv/
@@ -73,4 +75,5 @@ Thumbs.db
 dashboard/node_modules/
 dashboard/.next/
 dashboard/out/
+*.tsbuildinfo
 

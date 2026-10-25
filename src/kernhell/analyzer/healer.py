@@ -199,19 +199,17 @@ class SelectorHealer:
             logger.warning("healer.litellm_not_installed.using_heuristic")
             return self._heuristic_healing_fallback(user_prompt)
 
-        if not self.llm_cfg.api_key and self.llm_cfg.provider not in ("ollama", "local"):
+        # Resolve API key from config or standard provider environment variables (e.g. GEMINI_API_KEY)
+        api_key = self.llm_cfg.get_resolved_api_key()
+        if not api_key and self.llm_cfg.provider not in ("ollama", "local"):
             logger.warning("healer.no_api_key.using_heuristic")
             return self._heuristic_healing_fallback(user_prompt)
 
-        model_name = (
-            f"{self.llm_cfg.provider}/{self.llm_cfg.model}"
-            if self.llm_cfg.provider != "openai"
-            else self.llm_cfg.model
-        )
+        model_name = self.llm_cfg.get_litellm_model_name()
 
         response = litellm.completion(
             model=model_name,
-            api_key=self.llm_cfg.api_key,
+            api_key=api_key,
             temperature=self.llm_cfg.temperature,
             max_tokens=self.llm_cfg.max_tokens,
             messages=[

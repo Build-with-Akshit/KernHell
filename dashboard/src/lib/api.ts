@@ -231,53 +231,126 @@ export async function simulateHeal(payload: {
     });
     if (res.ok) return await res.json();
   } catch (e) {
-    // Offline simulation fallback
+    // Offline simulation fallback — backend not running
   }
 
-  const isMissing = payload.dom_html.toLowerCase().includes('out of stock');
+  // ── Offline heuristic mock ─────────────────────────────────────────────
+  const domLower = payload.dom_html.toLowerCase();
+  const isMissing =
+    domLower.includes('out of stock') ||
+    domLower.includes('currently unavailable') ||
+    domLower.includes('sold out');
+
   const originalBytes = new TextEncoder().encode(payload.dom_html).length;
-  const prunedBytes = Math.round(originalBytes * 0.18);
+  const prunedBytes = Math.round(originalBytes * 0.17);
+  const compressionPct = parseFloat(((1 - prunedBytes / originalBytes) * 100).toFixed(1));
+
+  // Derive a test file name from the surrounding code if possible
+  const fnMatch = payload.surrounding_code.match(/def (test_\w+)/);
+  const testFileName = fnMatch ? `${fnMatch[1]}.py` : 'test_playwright.py';
 
   if (isMissing) {
+    // Extract the first alert/banner text for a realistic pruned DOM
+    const alertMatch = payload.dom_html.match(/role=["']alert["'][^>]*>([^<]+)</);
+    const alertText = alertMatch ? alertMatch[1].trim() : 'Element removed from DOM';
     return {
       broken_selector: payload.broken_selector,
       original_dom_bytes: originalBytes,
       pruned_dom_bytes: prunedBytes,
-      compression_percent: 82.0,
-      pruned_dom: '<main><div role="alert">Out of Stock</div></main>',
+      compression_percent: compressionPct,
+      pruned_dom: `<main><div role="alert">${alertText}</div></main>`,
       diagnosis: {
         failure_type: 'missing',
-        explanation: 'Anti-Hallucination Guardrail: Element is absent due to out-of-stock state. Genuine application bug detected — healing aborted to avoid masking defects.',
+        explanation:
+          'Anti-Hallucination Guardrail: The element identified by ' +
+          `"${payload.broken_selector}" is absent from the live DOM. ` +
+          'Contextual signals (out-of-stock / unavailable banner) confirm this is a genuine ' +
+          'application regression — healing aborted to avoid masking real defects.',
         confidence: 0.94,
       },
       from_cache: false,
     };
   }
 
+  // ── Rename / structural fallback ─────────────────────────────────────
+  // Try to pull a real button from the DOM for a realistic healed selector
+  const btnRoleMatch = payload.dom_html.match(/role=["']button["']/);
+  const testidMatch = payload.dom_html.match(/data-testid=["']([^"']+)["']/);
+  const idMatch = payload.dom_html.match(/\bid=["']([^"']+)["']/);
+  const btnTextMatch = payload.dom_html.match(/<button[^>]*>\s*([^<]+)\s*<\/button>/);
+
+  let healedSelector: string;
+  let strategy: string;
+  let reasoning: string;
+
+  if (testidMatch) {
+    healedSelector = `page.get_by_test_id('${testidMatch[1]}')`;
+    strategy = 'test_id_match';
+    reasoning =
+      `Found data-testid="${testidMatch[1]}" in live DOM — most resilient locator strategy. ` +
+      'Uniqueness verified.';
+  } else if (btnTextMatch && btnRoleMatch) {
+    const label = btnTextMatch[1].trim();
+    healedSelector = `page.get_by_role('button', name='${label}')`;
+    strategy = 'role_match';
+    reasoning =
+      `Button with accessible role and label "${label}" found in live DOM. ` +
+      'Role + label combination is stable across cosmetic refactors.';
+  } else if (idMatch) {
+    healedSelector = `#${idMatch[1]}`;
+    strategy = 'id_match';
+    reasoning = `New element ID "#${idMatch[1]}" detected in live DOM as replacement for "${payload.broken_selector}".`;
+  } else {
+    healedSelector = `page.get_by_role('button', name='Submit')`;
+    strategy = 'role_match';
+    reasoning = 'Fallback: generic accessible button role — verify manually.';
+  }
+
+  // Build a realistic pruned DOM (just the interactive element)
+  const buttonSnippet = (() => {
+    const m = payload.dom_html.match(/<button[^>]*>[\s\S]*?<\/button>/);
+    return m ? m[0].replace(/\s+/g, ' ').trim() : '<button>Submit</button>';
+  })();
+
+  // Locate the broken selector line in surrounding code
+  const brokenLine = payload.surrounding_code
+    .split('\n')
+    .find((l) => l.includes(payload.broken_selector));
+  const healedLine = brokenLine
+    ? brokenLine.replace(
+        payload.broken_selector,
+        healedSelector
+      )
+    : `    page.click("${healedSelector}")`;
+  const originalLine = brokenLine || `    page.click("${payload.broken_selector}")`;
+
   return {
     broken_selector: payload.broken_selector,
     original_dom_bytes: originalBytes,
     pruned_dom_bytes: prunedBytes,
-    compression_percent: 81.4,
-    pruned_dom: '<main><button type="submit" id="purchase-btn" data-testid="complete-order-btn" role="button">Place Your Order</button></main>',
+    compression_percent: compressionPct,
+    pruned_dom: `<main>${buttonSnippet}</main>`,
     diagnosis: {
       failure_type: 'rename',
-      explanation: 'Element exists in live DOM. Developer renamed class/ID during UI refactor. Safe to autonomously heal.',
-      confidence: 0.96,
+      explanation:
+        `The element "${payload.broken_selector}" no longer exists in the live DOM, ` +
+        'but a functionally equivalent interactive element was located. ' +
+        'This is a cosmetic refactor (ID/class rename) — safe to autonomously heal.',
+      confidence: 0.93,
     },
     healed_selector: {
       old_selector: payload.broken_selector,
-      new_selector: "page.get_by_role('button', name='Place Your Order')",
-      strategy: 'role_match',
-      confidence: 0.95,
-      reasoning: 'Targeted accessible button role with exact visible label. Passed strict DOM presence verification.',
+      new_selector: healedSelector,
+      strategy,
+      confidence: testidMatch ? 0.98 : 0.93,
+      reasoning,
     },
-    applied_diff: `--- a/test_order.py
-+++ b/test_order.py
-@@ -10,3 +10,3 @@
-     # Step 2: click the purchase action (needs to be healed)
--    page.click("${payload.broken_selector}")  # inline comment here
-+    page.click("page.get_by_role('button', name='Place Your Order')")  # inline comment here`,
+    applied_diff:
+      `--- a/${testFileName}\n` +
+      `+++ b/${testFileName}\n` +
+      `@@ -1,1 +1,1 @@\n` +
+      `-${originalLine}\n` +
+      `+${healedLine}`,
     from_cache: false,
   };
 }

@@ -30,11 +30,39 @@ else:
 class LLMConfig(BaseModel):
     """LLM provider settings."""
 
-    provider: str = "groq"
-    model: str = "llama-3.3-70b-versatile"
+    provider: str = "gemini"
+    model: str = "gemini-1.5-flash"
     api_key: Optional[str] = None
     temperature: float = 0.1
     max_tokens: int = 2048
+
+    def get_resolved_api_key(self) -> Optional[str]:
+        """Resolve API key from explicit config or standard provider environment variables."""
+        if self.api_key:
+            return self.api_key
+
+        import os
+
+        prov = self.provider.lower()
+        if prov == "gemini":
+            return os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+        elif prov == "groq":
+            return os.environ.get("GROQ_API_KEY")
+        elif prov == "openai":
+            return os.environ.get("OPENAI_API_KEY")
+        elif prov == "anthropic":
+            return os.environ.get("ANTHROPIC_API_KEY")
+        return None
+
+    def get_litellm_model_name(self) -> str:
+        """Format the model name appropriately for litellm."""
+        prov = self.provider.lower()
+        model = self.model.strip()
+        if prov == "openai":
+            return model
+        elif prov == "gemini":
+            return model if model.startswith("gemini/") else f"gemini/{model}"
+        return model if model.startswith(f"{prov}/") else f"{prov}/{model}"
 
 
 class HealingConfig(BaseModel):
@@ -142,6 +170,25 @@ def _deep_merge(base: dict, overlay: dict) -> dict:
     return merged
 
 
+def _load_env_file() -> None:
+    """Load key-value pairs from .env file into os.environ if present."""
+    import os
+
+    for env_file in [Path.cwd() / ".env", Path.home() / ".kernhell" / ".env"]:
+        if env_file.is_file():
+            try:
+                for line in env_file.read_text(encoding="utf-8").splitlines():
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        k, v = line.split("=", 1)
+                        k = k.strip()
+                        v = v.strip().strip("'\"")
+                        if k and k not in os.environ:
+                            os.environ[k] = v
+            except Exception:
+                pass
+
+
 def load_config(config_path: Optional[Path] = None) -> KernHellConfig:
     """Load and return the merged KernHell configuration.
 
@@ -157,6 +204,7 @@ def load_config(config_path: Optional[Path] = None) -> KernHellConfig:
     KernHellConfig
         Fully resolved configuration with TOML → env-var priority.
     """
+    _load_env_file()
     file_settings: dict = {}
 
     path = config_path or _find_config_file()

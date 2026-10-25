@@ -2,10 +2,11 @@
 # Override by placing a copy at ~/.kernhellrc.toml or ./.kernhellrc.toml
 
 [llm]
-provider = "groq"                       # groq | openai | anthropic | ollama
-model = "llama-3.3-70b-versatile"
+provider = "gemini"                       # gemini | groq | openai | anthropic | ollama
+model = "gemini-1.5-flash"                # gemini-1.5-flash | gemini-2.0-flash | gemini-1.5-pro
 temperature = 0.1
 max_tokens = 2048
+# api_key = ""                            # Optional: can also be set via GEMINI_API_KEY in .env
 
 [healing]
 confidence_threshold = 0.85
