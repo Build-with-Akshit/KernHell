@@ -75,3 +75,42 @@ def test_check_first_run_setup_skips_when_configured(tmp_path: Path, monkeypatch
     from rich.console import Console
     result_cfg = check_first_run_setup(Console(), cfg)
     assert result_cfg == cfg
+
+
+def test_cli_llm_show() -> None:
+    result = runner.invoke(app, ["llm", "show"])
+    assert result.exit_code == 0
+    assert "Active AI / LLM Engine" in result.output
+    assert "Provider" in result.output
+
+
+def test_cli_llm_set_command(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
+    result = runner.invoke(app, ["llm", "set", "openai", "-k", "sk-testkey123", "-m", "gpt-4o"])
+    assert result.exit_code == 0
+    assert "Successfully switched LLM to OpenAI" in result.output
+
+    config_file = tmp_path / ".kernhell" / ".kernhellrc.toml"
+    assert config_file.exists()
+    content = config_file.read_text(encoding="utf-8")
+    assert 'provider = "openai"' in content
+    assert 'model = "gpt-4o"' in content
+
+    env_file = tmp_path / ".kernhell" / ".env"
+    assert env_file.exists()
+    assert "OPENAI_API_KEY=sk-testkey123" in env_file.read_text(encoding="utf-8")
+
+
+def test_cli_llm_set_invalid_provider() -> None:
+    result = runner.invoke(app, ["llm", "set", "invalid_provider_xyz"])
+    assert result.exit_code == 1
+    assert "Unknown provider" in result.output
+
+
+def test_cli_switch_llm_alias() -> None:
+    result = runner.invoke(app, ["switch-llm", "--help"])
+    assert result.exit_code == 0
+    assert "switch" in result.output.lower()
+
