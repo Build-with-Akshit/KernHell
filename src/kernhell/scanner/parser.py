@@ -27,58 +27,66 @@ logger = structlog.get_logger()
 # Regex patterns for Playwright error parsing
 # ---------------------------------------------------------------------------
 
-# Matches: "locator.click: Timeout 5000ms exceeded."
+# Matches: "locator.click: Timeout 5000ms exceeded." or "Timed out 5000ms waiting for expect(locator)..."
 _TIMEOUT_PATTERN = re.compile(
-    r"(locator\.\w+|page\.\w+):\s*Timeout\s+\d+ms\s+exceeded",
+    r"(locator\.\w+|page\.\w+|expect\(locator\)):?\s*Timeout\s+\d+ms\s+exceeded|Timed\s+out\s+\d+ms",
     re.IGNORECASE,
 )
 
 # Matches: "waiting for locator("button#buy-now")" or 'locator("#buy-now")'
 _LOCATOR_PATTERN = re.compile(
-    r"""locator\(\s*["'](.+?)["']\s*\)""",
+    r"""locator\(\s*["'`]?(.+?)["'`]?\s*\)""",
     re.IGNORECASE,
 )
 
-# Matches: page.click("#buy-now") or page.fill("input.email", ...)
+# Matches: page.click("#buy-now") or await page.fill("input.email", ...)
 _PAGE_ACTION_PATTERN = re.compile(
-    r"""page\.(?:click|fill|type|check|uncheck|select_option|hover|dblclick|focus)\(\s*["'](.+?)["']""",
+    r"""(?:await\s+)?page\.(?:click|fill|type|check|uncheck|select_option|selectOption|hover|dblclick|focus)\(\s*["'`](.+?)["'`]""",
     re.IGNORECASE,
 )
 
-# Matches: page.get_by_role("button", name="Buy Now")
+# Matches: page.get_by_role("button", name="Buy Now") or page.getByRole("button", { name: "Buy Now" })
 _GET_BY_ROLE_PATTERN = re.compile(
-    r"""page\.get_by_role\(\s*["'](\w+)["'](?:\s*,\s*name\s*=\s*["'](.+?)["'])?\s*\)""",
+    r"""(?:page\.)?(?:get_by_role|getByRole)\(\s*["'](\w+)["'](?:\s*,\s*(?:\{\s*name:\s*|name\s*=\s*)["']([^"']+)["']\s*\}?)?\s*\)""",
     re.IGNORECASE,
 )
 
-# Matches: page.get_by_text("Buy Now")
+# Matches: page.get_by_text("Buy Now") or page.getByText("Buy Now")
 _GET_BY_TEXT_PATTERN = re.compile(
-    r"""page\.get_by_text\(\s*["'](.+?)["']\s*\)""",
+    r"""(?:page\.)?(?:get_by_text|getByText)\(\s*["'](.+?)["']\s*\)""",
     re.IGNORECASE,
 )
 
-# Matches: page.get_by_test_id("checkout-btn")
+# Matches: page.get_by_test_id("checkout-btn") or page.getByTestId("checkout-btn")
 _GET_BY_TESTID_PATTERN = re.compile(
-    r"""page\.get_by_test_id\(\s*["'](.+?)["']\s*\)""",
+    r"""(?:page\.)?(?:get_by_test_id|getByTestId)\(\s*["'](.+?)["']\s*\)""",
     re.IGNORECASE,
 )
 
-# Matches: page.get_by_label("Email")
+# Matches: page.get_by_label("Email") or page.getByLabel("Email")
 _GET_BY_LABEL_PATTERN = re.compile(
-    r"""page\.get_by_label\(\s*["'](.+?)["']\s*\)""",
+    r"""(?:page\.)?(?:get_by_label|getByLabel)\(\s*["'](.+?)["']\s*\)""",
     re.IGNORECASE,
 )
 
-# Matches: page.get_by_placeholder("Enter email")
+# Matches: page.get_by_placeholder("Enter email") or page.getByPlaceholder("Enter email")
 _GET_BY_PLACEHOLDER_PATTERN = re.compile(
-    r"""page\.get_by_placeholder\(\s*["'](.+?)["']\s*\)""",
+    r"""(?:page\.)?(?:get_by_placeholder|getByPlaceholder)\(\s*["'](.+?)["']\s*\)""",
     re.IGNORECASE,
 )
 
-# Matches pytest traceback lines like: "tests/test_checkout.py:15: TimeoutError"
-_PYTEST_LOCATION_PATTERN = re.compile(
-    r"^(.+\.py):(\d+):\s*(TimeoutError|Error|AssertionError)",
+# Matches pytest and Playwright TS location lines
+_LOCATION_PATTERN = re.compile(
+    r"^(.+\.(?:py|ts|js|tsx|jsx)):(\d+):(?:\d+:)?\s*(TimeoutError|Error|AssertionError)?",
     re.MULTILINE,
+)
+_TS_AT_LOCATION_PATTERN = re.compile(
+    r"at\s+(?:.+\s+)?\(?(.+\.(?:ts|js|py|tsx|jsx)):(\d+):(\d+)\)?",
+    re.IGNORECASE,
+)
+_TS_LINE_SNIPPET_PATTERN = re.compile(
+    r">\s*(\d+)\s*\|\s*(?:await\s+)?(?:page|locator)",
+    re.IGNORECASE,
 )
 
 # Matches: "strict mode violation" errors
@@ -186,11 +194,20 @@ def _extract_selector(text: str) -> tuple[str, SelectorType]:
 
 
 def _extract_line_number(error_text: str, test_file: Path) -> int:
-    """Extract the failing line number from pytest traceback output."""
+    """Extract the failing line number from pytest or Playwright TS traceback output."""
     filename = test_file.name
-    for m in _PYTEST_LOCATION_PATTERN.finditer(error_text):
+
+    for m in _LOCATION_PATTERN.finditer(error_text):
         if filename in m.group(1):
             return int(m.group(2))
+
+    for m in _TS_AT_LOCATION_PATTERN.finditer(error_text):
+        if filename in m.group(1):
+            return int(m.group(2))
+
+    snippet_match = _TS_LINE_SNIPPET_PATTERN.search(error_text)
+    if snippet_match:
+        return int(snippet_match.group(1))
 
     # Fallback: look for any ":<number>:" pattern near the test filename
     fallback = re.search(

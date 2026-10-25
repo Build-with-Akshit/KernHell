@@ -80,3 +80,33 @@ def test_patcher_raises_when_selector_not_found() -> None:
             old_selector="#completely-missing-selector",
             new_selector="#replacement",
         )
+
+
+def test_patcher_typescript_file_workflow(tmp_path: Path) -> None:
+    patcher = SurgicalPatcher()
+    ts_file = tmp_path / "checkout.spec.ts"
+    ts_code = """import { test, expect } from '@playwright/test';
+
+// Step 1: Open store
+test('checkout', async ({ page }: { page: any }) => {
+  // Step 2: Click checkout
+  await page.click('#old-checkout-btn');
+});
+"""
+    ts_file.write_text(ts_code, encoding="utf-8")
+
+    fix = SelectorFix(
+        old_selector="#old-checkout-btn",
+        new_selector="#new-checkout-btn",
+        strategy=SelectorStrategy.CSS_FALLBACK,
+        confidence=0.95,
+    )
+
+    patched = patcher.patch_test_file(ts_file, fix, line_number=6, create_backup=True)
+
+    assert "#new-checkout-btn" in patched
+    assert "#old-checkout-btn" not in patched
+    assert "// Step 1: Open store" in patched
+    assert "// Step 2: Click checkout" in patched
+    assert "async ({ page }: { page: any })" in patched
+

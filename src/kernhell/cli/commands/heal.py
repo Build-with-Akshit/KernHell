@@ -85,11 +85,25 @@ def heal_command(
         console.print(f"[bold red]Error:[/bold red] Target path not found: {target}")
         raise typer.Exit(code=1)
 
-    # Discover test files (single file vs batch directory mode)
+    # Discover test files (single file vs batch directory mode, Python + TypeScript/JS)
     if target.is_dir():
-        test_files = sorted(target.rglob("test_*.py"))
+        candidates = set()
+        for p in target.rglob("*"):
+            if not p.is_file():
+                continue
+            name_lower = p.name.lower()
+            if (
+                (name_lower.startswith("test_") and p.suffix in (".py", ".ts", ".js"))
+                or name_lower.endswith("_test.py")
+                or name_lower.endswith(".spec.ts")
+                or name_lower.endswith(".test.ts")
+                or name_lower.endswith(".spec.js")
+                or name_lower.endswith(".test.js")
+            ):
+                candidates.add(p)
+        test_files = sorted(candidates)
         if not test_files:
-            console.print(f"[yellow]No 'test_*.py' files found in {target}[/yellow]")
+            console.print(f"[yellow]No Playwright test files (.py, .ts, .js) found in {target}[/yellow]")
             raise typer.Exit(code=0)
     else:
         test_files = [target]

@@ -79,3 +79,30 @@ def test_parse_clean_output_returns_empty(sample_test_path: Path) -> None:
     """
     failures = parse_playwright_errors(clean_output, sample_test_path)
     assert len(failures) == 0
+
+
+def test_parse_playwright_typescript_output(tmp_path: Path) -> None:
+    ts_file = tmp_path / "checkout.spec.ts"
+    ts_file.write_text("import { test } from '@playwright/test';\ntest('checkout', async ({ page }) => {\n  await page.click('#checkout-btn');\n});\n", encoding="utf-8")
+
+    ts_output = """
+    Running 1 test using 1 worker
+    1) [chromium] › checkout.spec.ts:3:9 › checkout ──────────────────────────────────────────────
+       Error: locator.click: Timeout 5000ms exceeded.
+       Call log:
+         - waiting for locator('#checkout-btn')
+       
+          1 | import { test } from '@playwright/test';
+          2 | test('checkout', async ({ page }) => {
+        > 3 |   await page.click('#checkout-btn');
+            |              ^
+          4 | });
+
+          at checkout.spec.ts:3:14
+    """
+    failures = parse_playwright_errors(ts_output, ts_file)
+    assert len(failures) == 1
+    assert failures[0].broken_selector == "#checkout-btn"
+    assert failures[0].selector_type == SelectorType.CSS
+    assert failures[0].line_number == 3
+

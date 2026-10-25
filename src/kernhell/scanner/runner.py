@@ -99,8 +99,8 @@ class ScannerRunner:
 
         logger.info("scanner.run.start", test_file=str(test_file))
 
-        # Step 1: Run the test via pytest subprocess
-        error_output = self._run_pytest(test_file)
+        # Step 1: Run the test via appropriate runner (pytest for .py, npx playwright test for .ts/.js)
+        error_output = self._run_test_process(test_file)
 
         if error_output is None:
             raise NoFailuresDetectedError(
@@ -134,7 +134,54 @@ class ScannerRunner:
             failures=len(failures),
             has_dom=bool(failures[0].live_dom) if failures else False,
         )
-        return failures
+    def _run_test_process(self, test_file: Path) -> str | None:
+        """Run the test subprocess (Python pytest or TypeScript Playwright test)."""
+        if test_file.suffix.lower() in (".ts", ".js", ".tsx", ".jsx", ".mjs", ".cjs"):
+            return self._run_playwright_test_ts(test_file)
+        return self._run_pytest(test_file)
+
+    def _run_playwright_test_ts(self, test_file: Path) -> str | None:
+        """Execute a TypeScript/JavaScript Playwright test via npx playwright test."""
+        npx_cmd = "npx.cmd" if sys.platform == "win32" else "npx"
+        cmd = [
+            npx_cmd,
+            "playwright",
+            "test",
+            str(test_file),
+            "--reporter=list",
+        ]
+
+        logger.debug("scanner.playwright_ts.exec", cmd=" ".join(cmd))
+
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=self._scanner_cfg.timeout_ms * 3 / 1000,
+                cwd=str(test_file.parent),
+                shell=(sys.platform == "win32"),
+            )
+        except FileNotFoundError:
+            raise PlaywrightNotInstalledError(
+                "npx / Node.js not found on PATH. Please ensure Node.js is installed to run TypeScript Playwright tests."
+            )
+        except subprocess.TimeoutExpired:
+            raise ScannerError(
+                f"TypeScript test execution timed out after {self._scanner_cfg.timeout_ms * 3}ms"
+            )
+
+        if result.returncode == 0:
+            logger.info("scanner.playwright_ts.passed", test_file=str(test_file))
+            return None
+
+        combined = result.stdout + "\n" + result.stderr
+        logger.debug(
+            "scanner.playwright_ts.failed",
+            exit_code=result.returncode,
+            output_len=len(combined),
+        )
+        return combined
 
     def _run_pytest(self, test_file: Path) -> str | None:
         """Execute pytest on the test file and return error output.

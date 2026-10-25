@@ -52,14 +52,14 @@ def verify_dom_presence(new_selector: str, dom_html: str) -> bool:
 
     dom_lower = dom_html.lower()
 
-    # 1. Check get_by_test_id("foo") or [data-testid="foo"]
-    testid_match = re.search(r"""(?:get_by_test_id|data-testid[=:])\s*\(?["']?([^"'\)]+)""", new_selector)
+    # 1. Check get_by_test_id("foo") or getByTestId("foo") or [data-testid="foo"]
+    testid_match = re.search(r"""(?:get_by_test_id|getByTestId|data-testid[=:])\s*\(?["']?([^"'\)]+)""", new_selector)
     if testid_match:
         testid = testid_match.group(1).lower()
         return testid in dom_lower
 
-    # 2. Check get_by_role("button", name="...")
-    role_match = re.search(r"""get_by_role\(\s*["'](\w+)["'](?:\s*,\s*name\s*=\s*["']([^"']+)["'])?""", new_selector)
+    # 2. Check get_by_role("button", name="...") or getByRole("button", { name: "..." })
+    role_match = re.search(r"""(?:get_by_role|getByRole)\(\s*["'](\w+)["'](?:\s*,\s*(?:\{\s*name:\s*|name\s*=\s*)["']([^"']+)["']\s*\}?)?""", new_selector)
     if role_match:
         role = role_match.group(1).lower()
         name = role_match.group(2).lower() if role_match.group(2) else ""
@@ -67,8 +67,8 @@ def verify_dom_presence(new_selector: str, dom_html: str) -> bool:
             return name in dom_lower and (role in dom_lower or f"<{role}" in dom_lower)
         return role in dom_lower or f"<{role}" in dom_lower
 
-    # 3. Check get_by_text("...")
-    text_match = re.search(r"""get_by_text\(\s*["']([^"']+)["']""", new_selector)
+    # 3. Check get_by_text("...") or getByText("...")
+    text_match = re.search(r"""(?:get_by_text|getByText)\(\s*["']([^"']+)["']""", new_selector)
     if text_match:
         text = text_match.group(1).lower()
         return text in dom_lower
