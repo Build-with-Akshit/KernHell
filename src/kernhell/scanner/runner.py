@@ -153,12 +153,14 @@ class ScannerRunner:
 
         logger.debug("scanner.playwright_ts.exec", cmd=" ".join(cmd))
 
+        exec_timeout = max(60.0, (self._scanner_cfg.timeout_ms * 2) / 1000)
+
         try:
             result = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=self._scanner_cfg.timeout_ms * 3 / 1000,
+                timeout=exec_timeout,
                 cwd=str(test_file.parent),
                 shell=(sys.platform == "win32"),
             )
@@ -168,7 +170,7 @@ class ScannerRunner:
             )
         except subprocess.TimeoutExpired:
             raise ScannerError(
-                f"TypeScript test execution timed out after {self._scanner_cfg.timeout_ms * 3}ms"
+                f"TypeScript test execution timed out after {int(exec_timeout)}s"
             )
 
         if result.returncode == 0:
@@ -200,12 +202,14 @@ class ScannerRunner:
 
         logger.debug("scanner.pytest.exec", cmd=" ".join(cmd))
 
+        exec_timeout = max(60.0, (self._scanner_cfg.timeout_ms * 2) / 1000)
+
         try:
             result = subprocess.run(
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=self._scanner_cfg.timeout_ms * 3 / 1000,  # 3x the action timeout
+                timeout=exec_timeout,
                 cwd=str(test_file.parent),
             )
         except FileNotFoundError:
@@ -215,7 +219,7 @@ class ScannerRunner:
             )
         except subprocess.TimeoutExpired:
             raise ScannerError(
-                f"Test execution timed out after {self._scanner_cfg.timeout_ms * 3}ms"
+                f"Test execution timed out after {int(exec_timeout)}s"
             )
 
         if result.returncode == 0:

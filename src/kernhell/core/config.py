@@ -86,7 +86,7 @@ class CacheConfig(BaseModel):
 class ScannerConfig(BaseModel):
     """Playwright scanner settings."""
 
-    timeout_ms: int = 5000
+    timeout_ms: int = 30000
     capture_screenshot: bool = True
     browser: str = "chromium"
     headless: bool = True
