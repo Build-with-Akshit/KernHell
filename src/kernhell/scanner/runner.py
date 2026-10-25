@@ -34,19 +34,27 @@ from kernhell.scanner.parser import parse_playwright_errors
 logger = structlog.get_logger()
 
 
-def _extract_url_from_test(test_file: Path) -> str | None:
-    """Extract the first ``page.goto(...)`` URL from a test file.
-
-    This is a best-effort heuristic used to re-open the page for DOM capture.
-    """
+def _extract_url_or_content_from_test(test_file: Path) -> tuple[str | None, str | None]:
+    """Extract the page URL or inline page.set_content HTML from a test file."""
     try:
         content = test_file.read_text(encoding="utf-8")
     except Exception:
-        return None
+        return None, None
+
+    # Check for inline set_content first: page.set_content('<button...')
+    set_content_match = re.search(
+        r"""page\.set_content\(\s*(?:r?["']{3}(.+?)["']{3}|r?["'](.+?)["'])\s*\)""",
+        content,
+        re.DOTALL,
+    )
+    if set_content_match:
+        html = set_content_match.group(1) or set_content_match.group(2)
+        return None, html
 
     # Match: page.goto("https://example.com") or page.goto('...')
     m = re.search(r"""page\.goto\(\s*["'](.+?)["']""", content)
-    return m.group(1) if m else None
+    url = m.group(1) if m else None
+    return url, None
 
 
 class ScannerRunner:
@@ -109,8 +117,11 @@ class ScannerRunner:
             )
 
         # Step 3: Capture live DOM for each failure
-        page_url = _extract_url_from_test(test_file)
-        if page_url:
+        page_url, inline_dom = _extract_url_or_content_from_test(test_file)
+        if inline_dom:
+            for f in failures:
+                f.live_dom = inline_dom
+        elif page_url:
             live_dom = self._capture_live_dom(page_url)
             if live_dom:
                 for f in failures:
@@ -138,7 +149,6 @@ class ScannerRunner:
             "-v",
             "--tb=long",
             "--no-header",
-            f"--timeout={self._scanner_cfg.timeout_ms // 1000}",
         ]
 
         logger.debug("scanner.pytest.exec", cmd=" ".join(cmd))
