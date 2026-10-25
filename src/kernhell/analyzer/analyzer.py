@@ -145,8 +145,9 @@ class FailureAnalyzer:
             kwargs = {
                 "model": model_name,
                 "api_key": api_key,
-                "temperature": self.llm_cfg.temperature,
+                "temperature": 1.0 if "gemini-3" in model_name else self.llm_cfg.temperature,
                 "max_tokens": self.llm_cfg.max_tokens,
+                "request_timeout": 15,
                 "messages": [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},

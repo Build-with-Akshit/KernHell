@@ -31,7 +31,7 @@ class LLMConfig(BaseModel):
     """LLM provider settings."""
 
     provider: str = "gemini"
-    model: str = "gemini-2.5-flash"
+    model: str = "gemini-3.5-flash"
     api_key: Optional[str] = None
     api_base: Optional[str] = None
     temperature: float = 0.1
@@ -66,6 +66,16 @@ class LLMConfig(BaseModel):
         if prov == "openai":
             return model
         elif prov == "gemini":
+            # Auto-upgrade deprecated Gemini 2.x / 1.x models
+            if model in (
+                "gemini-2.5-flash",
+                "gemini-2.0-flash",
+                "gemini-1.5-flash",
+                "gemini/gemini-2.5-flash",
+                "gemini/gemini-2.0-flash",
+                "gemini/gemini-1.5-flash",
+            ):
+                model = "gemini-3.5-flash"
             return model if model.startswith("gemini/") else f"gemini/{model}"
         return model if model.startswith(f"{prov}/") else f"{prov}/{model}"
 

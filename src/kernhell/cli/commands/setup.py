@@ -21,7 +21,7 @@ PROVIDER_DETAILS = {
     "1": {
         "name": "Google Gemini",
         "provider": "gemini",
-        "default_model": "gemini-2.5-flash",
+        "default_model": "gemini-3.5-flash",
         "env_var": "GEMINI_API_KEY",
         "key_hint": "Free key available at: https://aistudio.google.com/app/apikey",
         "badge": "[bold green]Recommended • Free tier • Fast[/bold green]",

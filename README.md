@@ -123,7 +123,7 @@ KernHell gives you full freedom to choose whichever AI engine you prefer, or run
 
 | Provider | Default Model | Speed | Cost | Description |
 | :--- | :--- | :--- | :--- | :--- |
-| **Google Gemini** | `gemini-2.5-flash` | Ultra-fast | Free Tier | **Recommended**. Exceptional accuracy and zero setup cost. |
+| **Google Gemini** | `gemini-3.5-flash` | Ultra-fast | Free Tier | **Recommended**. Exceptional accuracy and zero setup cost. |
 | **OpenAI** | `gpt-4o-mini` / `gpt-4o` | Fast | Paid API | Industry standard accuracy for complex selectors. |
 | **Anthropic Claude** | `claude-3-5-sonnet` | Fast | Paid API | Deep reasoning for ambiguous multi-level DOM layouts. |
 | **Groq Cloud** | `llama-3.3-70b` | Lightning (~500 T/s) | Free Tier | Ultra-low latency inference for high-speed CI/CD. |

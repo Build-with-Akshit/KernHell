@@ -27,7 +27,7 @@ app = typer.Typer(
     help="KernHell — AI-Powered Autonomous Self-Healing Testing Engine.\n\n"
          "'The Heart of Your System Where Innovation Meets Precision'",
     add_completion=False,
-    no_args_is_help=True,
+    no_args_is_help=False,
 )
 
 # Register core commands
@@ -49,8 +49,9 @@ def version_callback(value: bool) -> None:
         raise typer.Exit()
 
 
-@app.callback()
+@app.callback(invoke_without_command=True)
 def main(
+    ctx: typer.Context,
     version: bool = typer.Option(
         False,
         "--version",
@@ -61,7 +62,14 @@ def main(
     ),
 ) -> None:
     """KernHell CLI entrypoint callback."""
-    pass
+    if ctx.invoked_subcommand is None:
+        setup_marker = Path.home() / ".kernhell" / ".setup_done"
+        if not setup_marker.exists():
+            from kernhell.cli.commands.setup import check_first_run_setup
+            from kernhell.core.config import load_config
+            check_first_run_setup(console, load_config())
+        console.print(ctx.get_help())
+        raise typer.Exit()
 
 
 if __name__ == "__main__":

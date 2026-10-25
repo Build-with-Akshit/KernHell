@@ -272,8 +272,9 @@ class SelectorHealer:
             kwargs = {
                 "model": model_name,
                 "api_key": api_key,
-                "temperature": self.llm_cfg.temperature,
+                "temperature": 1.0 if "gemini-3" in model_name else self.llm_cfg.temperature,
                 "max_tokens": self.llm_cfg.max_tokens,
+                "request_timeout": 15,
                 "messages": [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},
@@ -294,7 +295,7 @@ class SelectorHealer:
 
     def _heuristic_healing_fallback(self, dom_text: str = "", broken_selector: str = "") -> str:
         """Deterministic heuristic fallback that dynamically inspects the pruned DOM."""
-        from selectolax.parser import HTMLParser
+        from selectolax.lexbor import LexborHTMLParser as HTMLParser
 
         tree = HTMLParser(dom_text or "")
         broken_clean = broken_selector.strip("'\"").lower()

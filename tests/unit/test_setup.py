@@ -62,7 +62,7 @@ def test_setup_wizard_gemini_provider(tmp_path: Path, monkeypatch) -> None:
     assert config_file.exists()
     content = config_file.read_text(encoding="utf-8")
     assert 'provider = "gemini"' in content
-    assert 'model = "gemini-2.5-flash"' in content
+    assert 'model = "gemini-3.5-flash"' in content
 
 
 def test_check_first_run_setup_skips_when_configured(tmp_path: Path, monkeypatch) -> None:
