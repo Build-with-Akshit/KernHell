@@ -5,8 +5,8 @@ def test_purchase():
         browser = p.chromium.launch()
         page = browser.new_page()
         # Page par button ka id 'purchase-btn' hai
-        page.set_content('<button id="purchase-btn" data-testid="buy-btn">Buy now</button>')
+        page.set_content('<button id="purchase-btn" data-testid="order now">order now</button>')
 
         # Lekin test purana '[data-testid="complete-order-btn"]' dhundh raha hai
-        page.click('[data-testid="buy-btn"]')
+        page.click('[data-testid="order now"]')
         browser.close()
