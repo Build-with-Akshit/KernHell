@@ -246,17 +246,9 @@ python -m pytest -v
 # Run with test coverage
 python -m pytest tests/unit -v --cov=src/kernhell
 ```
-
 ---
 
-## 🗺️ Execution Roadmap
 
-- [x] **Weekend 1: Foundation (Scanner, Pruner, Core Models & CLI)**
-- [x] **Weekend 2: AI Brain (Analyzer, Healer, CST Surgical Patcher & Verifier)**
-- [x] **Weekend 3: Semantic Memory (Vector Cache, Embedder, Batch Healing & CI Export)**
-- [x] **Weekend 4: Mission Control Dashboard (Next.js & Production Release)**
-
----
 
 ## 📄 License
 
