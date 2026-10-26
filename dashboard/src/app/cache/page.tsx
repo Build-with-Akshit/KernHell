@@ -131,23 +131,28 @@ export default function CachePage() {
       </div>
 
       {/* Search and Filters */}
-      <div className="glass-panel p-4 rounded-2xl border border-surface-border flex items-center space-x-3">
-        <Search className="w-4 h-4 text-gray-400 ml-1" />
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Filter by broken selector, healed locator, strategy, or test file..."
-          className="w-full bg-transparent border-none text-xs font-mono text-white placeholder-gray-500 focus:outline-none"
-        />
-        {searchQuery && (
-          <button
-            onClick={() => setSearchQuery('')}
-            className="text-[11px] font-mono text-gray-400 hover:text-white px-2 py-0.5 rounded bg-surface-border"
-          >
-            Clear
-          </button>
-        )}
+      <div className="rounded-2xl p-2.5 sm:p-3 border border-white/[0.08] bg-[#0A0C14]/90 shadow-xl">
+        <div className="flex items-center space-x-3 px-4 py-3 rounded-xl bg-[#05060A] border border-white/[0.12] focus-within:border-brand-cyan/60 focus-within:ring-2 focus-within:ring-brand-cyan/20 transition-all">
+          <Search className="w-4 h-4 text-brand-cyan shrink-0" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search vector cache: broken selector (#buy-now), healed locator, strategy, or test file..."
+            className="w-full bg-transparent text-xs sm:text-sm font-mono text-white placeholder-gray-500 focus:outline-none"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="text-[11px] font-mono text-gray-400 hover:text-white px-2 py-0.5 rounded bg-white/[0.08] hover:bg-white/[0.15] transition-colors shrink-0"
+            >
+              Clear
+            </button>
+          )}
+          <div className="hidden sm:flex items-center text-[10px] font-mono px-2 py-0.5 rounded bg-white/[0.04] border border-white/[0.08] text-gray-400 shrink-0">
+            {filtered.length} of {records.length} items
+          </div>
+        </div>
       </div>
 
       {/* Cache Records Grid */}
