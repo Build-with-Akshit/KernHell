@@ -119,7 +119,7 @@ Usage: kernhell [OPTIONS] COMMAND [ARGS]...
 
 ## 🤖 Supported AI Providers & LLM Management
 
-KernHell gives you full freedom to choose whichever AI engine you prefer, or run **100% Offline with zero API keys**.
+KernHell gives you full freedom to choose whichever AI engine you prefer, including **100% Local & Private inference via Ollama**. Additionally, KernHell features an automatic **Emergency DOM Heuristic Fallback** that guarantees tests heal even during network outages or quota limits.
 
 | Provider | Default Model | Speed | Cost | Description |
 | :--- | :--- | :--- | :--- | :--- |
@@ -128,15 +128,16 @@ KernHell gives you full freedom to choose whichever AI engine you prefer, or run
 | **Anthropic Claude** | `claude-3-5-sonnet` | Fast | Paid API | Deep reasoning for ambiguous multi-level DOM layouts. |
 | **Groq Cloud** | `llama-3.3-70b` | Lightning (~500 T/s) | Free Tier | Ultra-low latency inference for high-speed CI/CD. |
 | **Ollama (Local)** | `llama3.2` / `qwen` | Local Hardware | Free (Offline) | 100% private, runs entirely on your local machine (`http://localhost:11434`). |
-| **Free Offline Mode** | *Built-in heuristic* | Instant (<5ms) | Free (No API) | Uses Selectolax HTML DOM parser + 384-d Vector Cache. Zero API key needed. |
+
+> [!TIP]
+> **Emergency DOM Heuristic Fallback**: If an API provider quota is exhausted or offline, KernHell never crashes. It automatically activates its internal Selectolax DOM heuristic engine and vector cache, labeling the fallback transparently in your healing report.
 
 ### First-Run Automatic Onboarding
-When running KernHell for the first time in an interactive terminal, if no API key is detected, KernHell automatically asks:
+When running KernHell for the first time in an interactive terminal, if no API key is detected, KernHell immediately welcomes you:
 ```text
-⚡ Welcome to KernHell! No AI / LLM provider has been configured yet.
-Would you like to select an LLM provider now (Gemini / OpenAI / Claude / Groq / Ollama / Free Offline)? [Y/n]:
+⚡ Welcome to KernHell! Let's configure your AI healing engine (10-second setup).
 ```
-Pressing `Enter` opens the interactive setup wizard immediately.
+It displays the 5 providers (Option 1 Gemini selected by default). You can paste your API key or press Enter to continue with emergency heuristics active until configured.
 
 ---
 
@@ -161,7 +162,6 @@ kernhell llm set groq --key "gsk_..."
 kernhell llm set openai --model "gpt-4o" --key "sk-..."
 kernhell llm set anthropic --key "sk-ant-..."
 kernhell llm set ollama --model "llama3.2" --api-base "http://localhost:11434"
-kernhell llm set offline    # Switch to 100% free offline heuristic mode
 ```
 
 ---

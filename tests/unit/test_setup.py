@@ -26,22 +26,40 @@ def test_cli_init_alias() -> None:
     assert "setup" in result.output.lower() or "wizard" in result.output.lower()
 
 
-def test_setup_wizard_offline_mode(tmp_path: Path, monkeypatch) -> None:
+def test_setup_wizard_ollama_provider(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
 
-    # Choice '6' selects Free Offline Heuristic Mode
-    inputs = "6\n"
+    # Choice '5' selects Ollama (Local Offline), model name "llama3.2", base URL default
+    inputs = "5\nllama3.2\nhttp://localhost:11434\n"
     with patch("rich.console.Console.print"):
         result = runner.invoke(app, ["setup"], input=inputs)
         assert result.exit_code == 0
 
     marker = tmp_path / ".kernhell" / ".setup_done"
     assert marker.exists()
-    assert "local" in marker.read_text(encoding="utf-8")
+    assert "ollama" in marker.read_text(encoding="utf-8")
 
     config_file = tmp_path / ".kernhell" / ".kernhellrc.toml"
     assert config_file.exists()
-    assert 'provider = "local"' in config_file.read_text(encoding="utf-8")
+    content = config_file.read_text(encoding="utf-8")
+    assert 'provider = "ollama"' in content
+    assert 'model = "ollama/llama3.2"' in content
+
+
+def test_setup_wizard_skip_api_key(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+
+    # Choice '1' (Gemini), empty API Key (skipped), Use default model (Y)
+    inputs = "1\n\nY\n"
+    with patch("rich.console.Console.print"):
+        result = runner.invoke(app, ["setup"], input=inputs)
+        assert result.exit_code == 0
+
+    config_file = tmp_path / ".kernhell" / ".kernhellrc.toml"
+    assert config_file.exists()
+    content = config_file.read_text(encoding="utf-8")
+    assert 'provider = "gemini"' in content
 
 
 def test_setup_wizard_gemini_provider(tmp_path: Path, monkeypatch) -> None:

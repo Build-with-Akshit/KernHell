@@ -19,7 +19,7 @@ console = Console(stderr=True)
 
 llm_app = typer.Typer(
     name="llm",
-    help="Inspect, set, and switch AI / LLM providers (Gemini, OpenAI, Claude, Groq, Ollama, Offline).",
+    help="Inspect, set, and switch AI / LLM providers (Gemini, OpenAI, Claude, Groq, Ollama).",
     no_args_is_help=False,
 )
 
@@ -33,9 +33,6 @@ PROVIDER_ALIASES = {
     "claude": "3",
     "groq": "4",
     "ollama": "5",
-    "local": "6",
-    "offline": "6",
-    "heuristic": "6",
 }
 
 
@@ -67,9 +64,9 @@ def show_llm_status() -> None:
     table.add_row("Model", cfg.llm.model)
     table.add_row(
         "API Key Status",
-        "[bold green]✔ Configured[/bold green]" if resolved_key and cfg.llm.provider not in ("local", "offline")
-        else "[dim]Not Required (100% Offline Mode)[/dim]" if cfg.llm.provider in ("local", "offline", "ollama")
-        else "[bold yellow]⚠ Missing (will use offline heuristics)[/bold yellow]"
+        "[bold green]✔ Configured[/bold green]" if resolved_key and cfg.llm.provider != "ollama"
+        else "[dim]Not Required (Local Ollama)[/dim]" if cfg.llm.provider == "ollama"
+        else "[bold yellow]⚠ Missing (Emergency DOM Heuristic active)[/bold yellow]"
     )
     if cfg.llm.api_base:
         table.add_row("API Base URL", cfg.llm.api_base)
@@ -80,7 +77,7 @@ def show_llm_status() -> None:
     console.print(table)
     console.print(
         "[dim]To switch provider interactively, run: [bold cyan]kernhell llm switch[/bold cyan]\n"
-        "Or set directly: [bold cyan]kernhell llm set <gemini|openai|claude|groq|ollama|offline>[/bold cyan][/dim]\n"
+        "Or set directly: [bold cyan]kernhell llm set <gemini|openai|claude|groq|ollama>[/bold cyan][/dim]\n"
     )
 
 
@@ -94,7 +91,7 @@ def switch_llm() -> None:
 def set_llm(
     provider: str = typer.Argument(
         ...,
-        help="Provider name: gemini | openai | anthropic | groq | ollama | offline",
+        help="Provider name: gemini | openai | anthropic | groq | ollama",
     ),
     model: Optional[str] = typer.Option(
         None,
@@ -136,8 +133,8 @@ def set_llm(
         existing = os.environ.get(env_var, "")
         if existing:
             final_key = existing
-        elif final_provider not in ("local", "offline", "ollama"):
-            final_key = typer.prompt(f"Enter your {env_var} (hidden)", hide_input=True).strip()
+        elif final_provider != "ollama":
+            final_key = typer.prompt(f"Enter your {env_var} (Press Enter to skip)", hide_input=True, default="").strip()
 
     # Save to ~/.kernhell/.env
     global_dir = Path.home() / ".kernhell"

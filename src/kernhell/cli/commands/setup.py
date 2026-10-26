@@ -58,14 +58,6 @@ PROVIDER_DETAILS = {
         "key_hint": "Runs 100% locally on your machine via Ollama daemon",
         "badge": "[bold blue]100% Local & Private • Zero Cost[/bold blue]",
     },
-    "6": {
-        "name": "Free Offline Heuristic Mode",
-        "provider": "local",
-        "default_model": "none",
-        "env_var": "",
-        "key_hint": "Zero API keys needed! Uses Semantic Vector Cache + DOM Parser",
-        "badge": "[bold white]Built-in • No API Key Needed • Fast[/bold white]",
-    },
 }
 
 
@@ -90,7 +82,7 @@ def run_setup_wizard() -> KernHellConfig:
 
     console.print(table)
     choice = typer.prompt(
-        "Select your AI / LLM provider [1-6]",
+        "Select your AI / LLM provider [1-5]",
         default="1",
         show_default=True,
     ).strip()
@@ -105,12 +97,7 @@ def run_setup_wizard() -> KernHellConfig:
     api_key = ""
     api_base = None
 
-    if provider == "local":
-        console.print(
-            "\n[bold green]✔ Offline Heuristic Mode Selected.[/bold green] "
-            "KernHell will operate with zero external API calls using Local Vector Cache & DOM Parser."
-        )
-    elif provider == "ollama":
+    if provider == "ollama":
         console.print(f"\n[cyan]Configuring {selected['name']}...[/cyan]")
         custom_model = typer.prompt("Ollama model name", default="llama3.2")
         model = f"ollama/{custom_model}" if not custom_model.startswith("ollama/") else custom_model
@@ -129,10 +116,14 @@ def run_setup_wizard() -> KernHellConfig:
 
         if not api_key:
             api_key = typer.prompt(
-                f"Enter your {env_var} (hidden)",
+                f"Enter your {env_var} (Press Enter to skip)",
                 hide_input=True,
                 default="",
             ).strip()
+            if not api_key:
+                console.print(
+                    "[dim yellow]⚠ No API key entered. KernHell will use Emergency DOM Heuristic Fallback until configured.[/dim yellow]"
+                )
 
         change_model = typer.confirm(f"Use default model '{model}'?", default=True)
         if not change_model:
@@ -206,9 +197,10 @@ def run_setup_wizard() -> KernHellConfig:
     summary_table = Table(box=box.SIMPLE)
     summary_table.add_column("Setting", style="bold cyan")
     summary_table.add_column("Configured Value", style="white")
-    summary_table.add_row("Provider", selected["name"])
-    summary_table.add_row("Model", model)
-    summary_table.add_row("API Key", "Set (Masked)" if api_key else "None (Offline / Local)")
+    summary_table.add_row(
+        "API Key",
+        "Set (Masked)" if api_key else "[dim]Not Required (Local Ollama)[/dim]" if provider == "ollama" else "[yellow]Not set (Emergency DOM Heuristic fallback active)[/yellow]",
+    )
     summary_table.add_row("Global Config", str(global_config_file))
 
     console.print(
@@ -230,7 +222,7 @@ def check_first_run_setup(console: Console, cfg: KernHellConfig) -> KernHellConf
         return cfg
 
     # Check if an API key is already available from env or explicit config
-    if cfg.llm.get_resolved_api_key() or cfg.llm.provider in ("ollama", "local"):
+    if cfg.llm.get_resolved_api_key() or cfg.llm.provider == "ollama":
         setup_marker.parent.mkdir(parents=True, exist_ok=True)
         setup_marker.write_text("existing_key\n", encoding="utf-8")
         return cfg
@@ -241,19 +233,9 @@ def check_first_run_setup(console: Console, cfg: KernHellConfig) -> KernHellConf
 
     console.print(
         "\n[bold yellow]⚡ Welcome to KernHell![/bold yellow] "
-        "No AI / LLM provider has been configured yet."
+        "Let's configure your AI healing engine (10-second setup)."
     )
-    configure_now = typer.confirm(
-        "Would you like to select an LLM provider now (Gemini / OpenAI / Claude / Groq / Ollama / Free Offline)?",
-        default=True,
-    )
-    if configure_now:
-        return run_setup_wizard()
-    else:
-        setup_marker.parent.mkdir(parents=True, exist_ok=True)
-        setup_marker.write_text("offline_skip\n", encoding="utf-8")
-        console.print("[dim]Using 100% free offline heuristic mode. Run 'kernhell setup' anytime to configure.[/dim]\n")
-        return cfg
+    return run_setup_wizard()
 
 
 def setup_command() -> None:
