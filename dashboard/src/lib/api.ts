@@ -74,91 +74,145 @@ export interface SimulateResult {
   from_cache: boolean;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+// Fallback initial data ensuring zero-delay, zero-blank rendering
+export const DEFAULT_STATS: SystemStats = {
+  total_runs: 14,
+  total_healed: 38,
+  real_bugs_caught: 3,
+  cache_entries: 12,
+  cache_hits: 26,
+  cache_misses: 4,
+  cache_efficiency_pct: 86.7,
+  hours_saved: 15.8,
+  dollars_saved: 1345.5,
+};
 
-export async function fetchStats(): Promise<SystemStats> {
-  try {
-    const res = await fetch(`${API_BASE}/api/stats`, { cache: 'no-store' });
-    if (res.ok) return await res.json();
-  } catch (e) {
-    // Graceful offline fallback
-  }
-  return {
-    total_runs: 14,
-    total_healed: 38,
-    real_bugs_caught: 3,
-    cache_entries: 12,
-    cache_hits: 26,
-    cache_misses: 4,
-    cache_efficiency_pct: 86.7,
-    hours_saved: 15.8,
-    dollars_saved: 1345.5,
-  };
-}
-
-export async function fetchHistory(): Promise<HistoryRun[]> {
-  try {
-    const res = await fetch(`${API_BASE}/api/history`, { cache: 'no-store' });
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) return data;
-    }
-  } catch (e) {
-    // Fallback
-  }
-  return [
-    {
-      test_file: 'tests/test_checkout_flow.py',
-      total_failures: 1,
-      healed_count: 1,
-      skipped_count: 0,
-      cache_hits: 1,
-      llm_calls: 0,
-      verification_passed: true,
-      duration_ms: 120,
-      diff: `--- a/test_checkout_flow.py
+export const DEFAULT_HISTORY: HistoryRun[] = [
+  {
+    test_file: 'tests/test_checkout_flow.py',
+    total_failures: 1,
+    healed_count: 1,
+    skipped_count: 0,
+    cache_hits: 1,
+    llm_calls: 0,
+    verification_passed: true,
+    duration_ms: 120,
+    diff: `--- a/test_checkout_flow.py
 +++ b/test_checkout_flow.py
 @@ -14,3 +14,3 @@
      # Step 2: click the purchase action (needs to be healed)
 -    page.click("#buy-now")  # inline comment here
 +    page.click("page.get_by_role('button', name='Place Your Order')")  # inline comment here`,
-      results: [
-        {
-          broken_selector: '#buy-now',
-          line_number: 15,
-          healed_selector: "page.get_by_role('button', name='Place Your Order')",
-          strategy: 'role_match',
-          confidence: 0.95,
-          from_cache: true,
-          skipped: false,
-        },
-      ],
-    },
-    {
-      test_file: 'tests/test_inventory_status.py',
-      total_failures: 1,
-      healed_count: 0,
-      skipped_count: 1,
-      cache_hits: 0,
-      llm_calls: 1,
-      verification_passed: true,
-      duration_ms: 640,
-      results: [
-        {
-          broken_selector: '.add-to-cart-btn',
-          line_number: 22,
-          from_cache: false,
-          skipped: true,
-          skip_reason: 'Real application bug: Item out of stock banner present, element is genuinely MISSING.',
-        },
-      ],
-    },
-  ];
+    results: [
+      {
+        broken_selector: '#buy-now',
+        line_number: 15,
+        healed_selector: "page.get_by_role('button', name='Place Your Order')",
+        strategy: 'role_match',
+        confidence: 0.95,
+        from_cache: true,
+        skipped: false,
+      },
+    ],
+  },
+  {
+    test_file: 'tests/test_inventory_status.py',
+    total_failures: 1,
+    healed_count: 0,
+    skipped_count: 1,
+    cache_hits: 0,
+    llm_calls: 1,
+    verification_passed: true,
+    duration_ms: 640,
+    results: [
+      {
+        broken_selector: '.add-to-cart-btn',
+        line_number: 22,
+        from_cache: false,
+        skipped: true,
+        skip_reason: 'Real application bug: Item out of stock banner present, element is genuinely MISSING.',
+      },
+    ],
+  },
+];
+
+export const DEFAULT_CACHE: CacheRecord[] = [
+  {
+    id: 'sha256-a1b2',
+    broken_selector: '#buy-now',
+    new_selector: "page.get_by_role('button', name='Place Your Order')",
+    strategy: 'role_match',
+    confidence: 0.95,
+    context_snippet: 'page.click("#buy-now")',
+    page_url: 'https://example.com/checkout',
+    test_file: 'tests/test_checkout.py',
+    verified: true,
+    created_at: new Date().toISOString(),
+    hit_count: 8,
+  },
+  {
+    id: 'sha256-c3d4',
+    broken_selector: '.submit-payment-btn',
+    new_selector: "page.get_by_test_id('complete-order-btn')",
+    strategy: 'test_id_match',
+    confidence: 0.98,
+    context_snippet: 'page.click(".submit-payment-btn")',
+    page_url: 'https://example.com/checkout',
+    test_file: 'tests/test_payment.py',
+    verified: true,
+    created_at: new Date(Date.now() - 3600000).toISOString(),
+    hit_count: 14,
+  },
+  {
+    id: 'sha256-e5f6',
+    broken_selector: '#login-button',
+    new_selector: "page.get_by_role('button', name='Sign In')",
+    strategy: 'role_match',
+    confidence: 0.92,
+    context_snippet: 'page.click("#login-button")',
+    page_url: 'https://example.com/login',
+    test_file: 'tests/test_auth.py',
+    verified: true,
+    created_at: new Date(Date.now() - 86400000).toISOString(),
+    hit_count: 4,
+  },
+];
+
+function getApiUrl(endpoint: string): string {
+  // In browser, relative URL uses Next.js proxy rewrite avoiding all CORS/PNA issues
+  if (typeof window !== 'undefined') {
+    return endpoint;
+  }
+  return (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000') + endpoint;
 }
 
-export async function fetchCache(): Promise<CacheRecord[]> {
+async function fetchWithTimeout(endpoint: string, options: RequestInit = {}, timeoutMs = 2500): Promise<Response> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetch(`${API_BASE}/api/cache`, { cache: 'no-store' });
+    const res = await fetch(getApiUrl(endpoint), {
+      ...options,
+      signal: controller.signal,
+    });
+    return res;
+  } finally {
+    clearTimeout(id);
+  }
+}
+
+export async function fetchStats(): Promise<SystemStats> {
+  try {
+    const res = await fetchWithTimeout('/api/stats', { cache: 'no-store' });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    // Graceful offline fallback
+  }
+  return DEFAULT_STATS;
+}
+
+export async function fetchHistory(): Promise<HistoryRun[]> {
+  try {
+    const res = await fetchWithTimeout('/api/history', { cache: 'no-store' });
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data) && data.length > 0) return data;
@@ -166,52 +220,25 @@ export async function fetchCache(): Promise<CacheRecord[]> {
   } catch (e) {
     // Fallback
   }
-  return [
-    {
-      id: 'sha256-a1b2',
-      broken_selector: '#buy-now',
-      new_selector: "page.get_by_role('button', name='Place Your Order')",
-      strategy: 'role_match',
-      confidence: 0.95,
-      context_snippet: 'page.click("#buy-now")',
-      page_url: 'https://example.com/checkout',
-      test_file: 'tests/test_checkout.py',
-      verified: true,
-      created_at: new Date().toISOString(),
-      hit_count: 8,
-    },
-    {
-      id: 'sha256-c3d4',
-      broken_selector: '.submit-payment-btn',
-      new_selector: "page.get_by_test_id('complete-order-btn')",
-      strategy: 'test_id_match',
-      confidence: 0.98,
-      context_snippet: 'page.click(".submit-payment-btn")',
-      page_url: 'https://example.com/checkout',
-      test_file: 'tests/test_payment.py',
-      verified: true,
-      created_at: new Date(Date.now() - 3600000).toISOString(),
-      hit_count: 14,
-    },
-    {
-      id: 'sha256-e5f6',
-      broken_selector: '#login-button',
-      new_selector: "page.get_by_role('button', name='Sign In')",
-      strategy: 'role_match',
-      confidence: 0.92,
-      context_snippet: 'page.click("#login-button")',
-      page_url: 'https://example.com/login',
-      test_file: 'tests/test_auth.py',
-      verified: true,
-      created_at: new Date(Date.now() - 86400000).toISOString(),
-      hit_count: 4,
-    },
-  ];
+  return DEFAULT_HISTORY;
+}
+
+export async function fetchCache(): Promise<CacheRecord[]> {
+  try {
+    const res = await fetchWithTimeout('/api/cache', { cache: 'no-store' });
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) return data;
+    }
+  } catch (e) {
+    // Fallback
+  }
+  return DEFAULT_CACHE;
 }
 
 export async function clearCache(): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}/api/cache/clear`, { method: 'POST' });
+    const res = await fetchWithTimeout('/api/cache/clear', { method: 'POST' });
     return res.ok;
   } catch (e) {
     return false;
@@ -224,11 +251,15 @@ export async function simulateHeal(payload: {
   surrounding_code: string;
 }): Promise<SimulateResult> {
   try {
-    const res = await fetch(`${API_BASE}/api/simulate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
+    const res = await fetchWithTimeout(
+      '/api/simulate',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      },
+      15000
+    );
     if (res.ok) return await res.json();
   } catch (e) {
     // Offline simulation fallback — backend not running

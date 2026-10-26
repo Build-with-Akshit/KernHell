@@ -1,13 +1,13 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { fetchHistory, HistoryRun } from '@/lib/api';
+import { fetchHistory, HistoryRun, DEFAULT_HISTORY } from '@/lib/api';
 import ActivityFeed from '@/components/ActivityFeed';
 import { History, Filter, FileText, CheckCircle, ShieldAlert, Layers } from 'lucide-react';
 
 export default function HistoryPage() {
-  const [history, setHistory] = useState<HistoryRun[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [history, setHistory] = useState<HistoryRun[]>(DEFAULT_HISTORY);
+  const [loading, setLoading] = useState(false);
   const [filterMode, setFilterMode] = useState<'all' | 'healed' | 'guarded'>('all');
 
   useEffect(() => {

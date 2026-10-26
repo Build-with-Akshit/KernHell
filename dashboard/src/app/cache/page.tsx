@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { fetchCache, clearCache, CacheRecord } from '@/lib/api';
+import { fetchCache, clearCache, CacheRecord, DEFAULT_CACHE } from '@/lib/api';
 import {
   Database,
   Search,
@@ -16,8 +16,8 @@ import {
 } from 'lucide-react';
 
 export default function CachePage() {
-  const [records, setRecords] = useState<CacheRecord[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [records, setRecords] = useState<CacheRecord[]>(DEFAULT_CACHE);
+  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isClearing, setIsClearing] = useState(false);
 

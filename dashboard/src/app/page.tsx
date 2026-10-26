@@ -7,6 +7,8 @@ import {
   fetchHistory,
   SystemStats,
   HistoryRun,
+  DEFAULT_STATS,
+  DEFAULT_HISTORY,
 } from '@/lib/api';
 import StatsCards from '@/components/StatsCards';
 import ActivityFeed from '@/components/ActivityFeed';
@@ -27,20 +29,9 @@ import {
 } from 'lucide-react';
 
 export default function OverviewPage() {
-  const [stats, setStats] = useState<SystemStats>({
-    total_runs: 14,
-    total_healed: 38,
-    real_bugs_caught: 3,
-    cache_entries: 12,
-    cache_hits: 26,
-    cache_misses: 4,
-    cache_efficiency_pct: 86.7,
-    hours_saved: 15.8,
-    dollars_saved: 1345.5,
-  });
-
-  const [history, setHistory] = useState<HistoryRun[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<SystemStats>(DEFAULT_STATS);
+  const [history, setHistory] = useState<HistoryRun[]>(DEFAULT_HISTORY);
+  const [loading, setLoading] = useState(false);
 
   const [selectedRunIndex, setSelectedRunIndex] = useState<number>(0);
   const [showPipeline, setShowPipeline] = useState<boolean>(true);
@@ -63,7 +54,7 @@ export default function OverviewPage() {
     loadData();
   }, []);
 
-  const activeRun = history[selectedRunIndex] || history[0];
+  const activeRun = (history && history.length > 0) ? (history[selectedRunIndex] || history[0]) : null;
 
   return (
     <div className="space-y-8">
@@ -178,7 +169,10 @@ export default function OverviewPage() {
 
       {/* Conceptual Architecture Lifecycle (Subtle & Non-Intrusive Informational Schematic) */}
       <section className="rounded-2xl border border-dashed border-white/[0.08] bg-[#07080E]/50 p-4 sm:p-5 text-gray-400 transition-all">
-        <div className="flex items-center justify-between">
+        <div
+          onClick={() => setShowPipeline((prev) => !prev)}
+          className="flex items-center justify-between cursor-pointer select-none"
+        >
           <div className="flex items-center space-x-2.5">
             <div className="w-6 h-6 rounded-md bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-gray-500">
               <Layers className="w-3.5 h-3.5" />
@@ -188,7 +182,7 @@ export default function OverviewPage() {
                 Engine Architecture Flow
               </span>
               <span className="text-[11px] font-mono text-gray-500">
-                • Conceptual reference only (how healing executes in background)
+                • Conceptual reference only (click to {showPipeline ? 'collapse' : 'expand'})
               </span>
             </div>
           </div>
@@ -199,11 +193,14 @@ export default function OverviewPage() {
             </span>
             <button
               type="button"
-              onClick={() => setShowPipeline(!showPipeline)}
-              className={`flex items-center space-x-1.5 text-[11px] font-mono font-semibold px-3 py-1.5 rounded-lg border transition-all duration-200 shadow-sm ${
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowPipeline((prev) => !prev);
+              }}
+              className={`flex items-center space-x-1.5 text-[11px] font-mono font-semibold px-3 py-1.5 rounded-lg border cursor-pointer select-none active:scale-95 transition-all duration-200 shadow-sm ${
                 showPipeline
-                  ? 'bg-brand-cyan/15 hover:bg-brand-cyan/25 text-brand-cyan border-brand-cyan/40 shadow-[0_0_12px_rgba(0,240,255,0.2)]'
-                  : 'bg-brand-red/15 hover:bg-brand-red/25 text-brand-red border-brand-red/40 shadow-[0_0_12px_rgba(255,51,75,0.2)]'
+                  ? 'bg-brand-cyan/20 hover:bg-brand-cyan/30 text-brand-cyan border-brand-cyan/50 shadow-[0_0_12px_rgba(0,240,255,0.25)]'
+                  : 'bg-brand-red/20 hover:bg-brand-red/30 text-brand-red border-brand-red/50 shadow-[0_0_12px_rgba(255,51,75,0.25)]'
               }`}
             >
               <span>{showPipeline ? 'Collapse Flow' : 'Expand Flow'}</span>
