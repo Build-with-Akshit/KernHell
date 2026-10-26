@@ -36,18 +36,20 @@ def list_cache(
         console.print("[yellow]Semantic Cache is currently empty. Run `kernhell heal` to populate.[/yellow]")
         return
 
-    table = Table(title="🧠 KernHell Semantic Memory Cache", box=box.ROUNDED)
-    table.add_column("Original Selector", style="red")
-    table.add_column("Healed Selector", style="bold green")
-    table.add_column("Strategy", style="cyan")
-    table.add_column("Confidence", justify="right")
-    table.add_column("Hits", justify="right")
+    from rich.markup import escape
+
+    table = Table(title="🧠 KernHell Semantic Memory Cache", box=box.ROUNDED, expand=True)
+    table.add_column("Original Selector", style="red", ratio=1, overflow="fold")
+    table.add_column("Healed Selector", style="bold green", ratio=1, overflow="fold")
+    table.add_column("Strategy", style="cyan", width=18, justify="center")
+    table.add_column("Confidence", justify="right", width=12)
+    table.add_column("Hits", justify="right", width=8)
 
     for e in entries:
         table.add_row(
-            e.broken_selector,
-            e.new_selector,
-            e.strategy.value,
+            escape(e.broken_selector),
+            escape(e.new_selector),
+            escape(e.strategy.value),
             f"{int(e.confidence * 100)}%",
             str(e.hit_count),
         )

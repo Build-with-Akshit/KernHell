@@ -34,45 +34,60 @@ class HealingReporter:
 
     @staticmethod
     def print_summary(report: HealingReport) -> None:
-        """Print full healing summary table to terminal."""
+        """Print full healing summary table to terminal with wide, unclipped selector display."""
+        from rich.markup import escape
+
         table = Table(
             title=f"KernHell Healing Report: [bold cyan]{report.test_file.name}[/bold cyan]",
             box=box.ROUNDED,
             show_lines=True,
+            expand=True,
         )
-        table.add_column("#", style="dim", width=4)
-        table.add_column("Original Selector", style="bold red")
-        table.add_column("Healed Selector", style="bold green")
-        table.add_column("Strategy", style="cyan")
-        table.add_column("Confidence", justify="right", style="bold yellow")
-        table.add_column("Source", style="bold magenta")
-        table.add_column("Verified", justify="center")
-
-        from rich.markup import escape
+        table.add_column("#", style="dim", width=3, justify="center")
+        table.add_column("Selector Transformation", ratio=1, overflow="fold")
+        table.add_column("Engine / Match", width=22, justify="center")
+        table.add_column("Verified", justify="center", width=10)
 
         for i, res in enumerate(report.results, start=1):
+            orig_sel = escape(res.failure.broken_selector)
             if res.fix:
-                source = "Semantic Cache" if res.from_cache else "AI Healer"
-                verified = "✅ YES" if res.fix.verified else "❌ NO"
-                conf_str = f"{int(res.fix.confidence * 100)}%"
-                table.add_row(
-                    str(i),
-                    escape(res.failure.broken_selector),
-                    escape(res.fix.new_selector),
-                    escape(res.fix.strategy.value),
-                    conf_str,
-                    source,
-                    verified,
+                healed_sel = escape(res.fix.new_selector)
+                transform_text = (
+                    f"[bold red]✖ {orig_sel}[/bold red]\n"
+                    f"[bold green]✔ {healed_sel}[/bold green]"
                 )
+                source_label = "Cache" if res.from_cache else "AI Healer"
+                conf_pct = f"{int(res.fix.confidence * 100)}%"
+                strategy_val = (
+                    res.fix.strategy.value
+                    if hasattr(res.fix.strategy, "value")
+                    else str(res.fix.strategy)
+                )
+                engine_text = (
+                    f"[bold cyan]{source_label}[/bold cyan] [dim]({conf_pct})[/dim]\n"
+                    f"[dim]{strategy_val}[/dim]"
+                )
+                verified_text = (
+                    "[bold green]YES[/bold green]"
+                    if res.fix.verified
+                    else "[bold red]NO[/bold red]"
+                )
+                table.add_row(str(i), transform_text, engine_text, verified_text)
             else:
+                reason = (
+                    escape(f"{res.skip_reason[:45]}...")
+                    if res.skip_reason
+                    else "Element absent on live page"
+                )
+                transform_text = (
+                    f"[bold red]✖ {orig_sel}[/bold red]\n"
+                    f"[dim yellow]↳ {reason}[/dim yellow]"
+                )
                 table.add_row(
                     str(i),
-                    escape(res.failure.broken_selector),
-                    "[yellow](SKIPPED)[/yellow]",
-                    "-",
-                    "-",
-                    "-",
-                    escape(f"{res.skip_reason[:30]}...") if res.skip_reason else "-",
+                    transform_text,
+                    "[yellow]Guardrail Active[/yellow]",
+                    "[yellow]SKIPPED[/yellow]",
                 )
 
         console.print(table)
