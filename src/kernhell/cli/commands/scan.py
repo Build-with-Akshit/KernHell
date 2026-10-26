@@ -64,7 +64,7 @@ def scan_command(
     elif json_log:
         log_level = cfg.logging.level
     else:
-        log_level = "WARNING"
+        log_level = "INFO"
     setup_logging(level=log_level, json_output=json_log or cfg.logging.json_output)
 
     print_banner()

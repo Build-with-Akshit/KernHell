@@ -85,7 +85,7 @@ def heal_command(
     elif json_log or output_format != "text":
         log_level = cfg.logging.level
     else:
-        log_level = "WARNING"
+        log_level = "INFO"
     setup_logging(level=log_level, json_output=json_log or cfg.logging.json_output)
 
     if output_format != "json":
@@ -140,23 +140,24 @@ def heal_command(
             if not report.results:
                 print_clean_pass_panel(test_file.name, duration_ms=report.duration_ms)
             else:
+                patched_code = read_file(test_file) if test_file.is_file() else ""
+                has_patch = bool(not dry_run and original_code and patched_code and patched_code != original_code)
+
                 for i, result in enumerate(report.results, start=1):
-                    print_failure_context(result.failure, index=i)
+                    print_failure_context(result.failure, index=i, show_surrounding_code=not has_patch)
                     if result.pruned_dom:
                         print_pruning_stats(result.pruned_dom)
                     if result.skipped:
                         print_skipped_guardrail(result)
                     console.print()
 
-                # Render surgical AST diff if file was patched
-                if not dry_run and original_code and test_file.is_file():
-                    patched_code = read_file(test_file)
-                    if patched_code != original_code:
-                        HealingReporter.render_diff(
-                            old_code=original_code,
-                            new_code=patched_code,
-                            filename=test_file.name,
-                        )
+                # Render surgical AST diff (unified view: surrounding code + red strike & green line)
+                if has_patch:
+                    HealingReporter.render_diff(
+                        old_code=original_code,
+                        new_code=patched_code,
+                        filename=test_file.name,
+                    )
 
                 HealingReporter.print_summary(report)
                 print_heal_success_badge(report)

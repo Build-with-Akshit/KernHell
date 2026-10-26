@@ -122,12 +122,67 @@ def print_heal_success_badge(report: HealingReport) -> None:
         console.print()
 
 
+def render_unified_patch_panel(original_code: str, patched_code: str, filename: str = "") -> Panel:
+    """Render a unified AST patch view with surrounding context, red cut lines and green added lines."""
+    from difflib import SequenceMatcher
+
+    orig_lines = original_code.splitlines()
+    patch_lines = patched_code.splitlines()
+
+    matcher = SequenceMatcher(None, orig_lines, patch_lines)
+    opcodes = matcher.get_opcodes()
+
+    text = Text()
+
+    for tag, i1, i2, j1, j2 in opcodes:
+        if tag == "equal":
+            continue
+
+        # Context around change (up to 4 lines before and after)
+        start_orig = max(0, i1 - 4)
+        end_orig = min(len(orig_lines), i2 + 4)
+
+        # Context lines before
+        for idx in range(start_orig, i1):
+            text.append(f"{idx + 1:>4}    ", style="dim")
+            text.append(f"{orig_lines[idx]}\n", style="dim")
+
+        # Removed lines (Red with strike / cut)
+        for idx in range(i1, i2):
+            text.append(f"{idx + 1:>4} -  ", style="bold red")
+            text.append(f"{orig_lines[idx]}\n", style="bold red strike")
+
+        # Added lines (Green)
+        for jdx in range(j1, j2):
+            text.append(f"{i1 + (jdx - j1) + 1:>4} +  ", style="bold green")
+            text.append(f"{patch_lines[jdx]}\n", style="bold green")
+
+        # Context lines after
+        for idx in range(i2, end_orig):
+            text.append(f"{idx + 1:>4}    ", style="dim")
+            text.append(f"{orig_lines[idx]}\n", style="dim")
+
+    title = (
+        f"[bold green]⚡ Surgical AST Patch ({filename})[/bold green]"
+        if filename
+        else "[bold green]⚡ Surgical AST Patch[/bold green]"
+    )
+    return Panel(
+        text,
+        title=title,
+        subtitle="[dim]Comments, indentation & formatting preserved[/dim]",
+        border_style="green",
+        box=box.ROUNDED,
+        padding=(0, 1),
+    )
+
+
 # ---------------------------------------------------------------------------
 # Failure Display
 # ---------------------------------------------------------------------------
 
 
-def print_failure_context(ctx: FailureContext, index: int = 1) -> None:
+def print_failure_context(ctx: FailureContext, index: int = 1, show_surrounding_code: bool = True) -> None:
     """Display a single failure context as a Rich panel."""
     table = Table(show_header=False, box=None, padding=(0, 2))
     table.add_column("Key", style="bold cyan", width=16)
@@ -150,8 +205,8 @@ def print_failure_context(ctx: FailureContext, index: int = 1) -> None:
     )
     console.print(panel)
 
-    # Show surrounding code if available
-    if ctx.surrounding_code:
+    # Show surrounding code ONLY when not displaying the unified patch panel
+    if show_surrounding_code and ctx.surrounding_code:
         syntax = Syntax(
             ctx.surrounding_code,
             "python",

@@ -22,32 +22,15 @@ class HealingReporter:
 
     @staticmethod
     def render_diff(old_code: str, new_code: str, filename: str = "") -> None:
-        """Display a syntax-highlighted diff of changes."""
-        import difflib
-
-        diff_lines = list(
-            difflib.unified_diff(
-                old_code.splitlines(),
-                new_code.splitlines(),
-                fromfile=f"a/{filename}" if filename else "original",
-                tofile=f"b/{filename}" if filename else "healed",
-                lineterm="",
-            )
-        )
-        if not diff_lines:
+        """Display a unified patch view with red cut lines and green added lines."""
+        if old_code == new_code:
             return
 
-        diff_text = "\n".join(diff_lines)
-        syntax = Syntax(diff_text, "diff", theme="monokai", line_numbers=False)
-        panel = Panel(
-            syntax,
-            title=f"[bold green]⚡ Surgical AST Diff ({filename})[/bold green]" if filename else "[bold green]⚡ Surgical AST Diff[/bold green]",
-            subtitle="[dim]Comments, indentation & formatting preserved[/dim]",
-            border_style="green",
-            box=box.ROUNDED,
-            padding=(0, 1),
-        )
+        from kernhell.cli.ui import render_unified_patch_panel
+
+        panel = render_unified_patch_panel(old_code, new_code, filename)
         console.print(panel)
+        console.print()
 
     @staticmethod
     def print_summary(report: HealingReport) -> None:
