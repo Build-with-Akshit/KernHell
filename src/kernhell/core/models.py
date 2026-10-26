@@ -128,6 +128,7 @@ class SelectorFix(BaseModel):
 
     # Populated after Verifier confirms the fix works
     verified: bool = False
+    from_heuristic: bool = False
 
 
 class HealingResult(BaseModel):
@@ -138,6 +139,7 @@ class HealingResult(BaseModel):
     diagnosis: Optional[Diagnosis] = None
     fix: Optional[SelectorFix] = None
     from_cache: bool = False
+    from_heuristic: bool = False
     skipped: bool = False
     skip_reason: str = ""
 

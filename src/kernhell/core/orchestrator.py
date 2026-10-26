@@ -270,4 +270,5 @@ class HealingOrchestrator:
             diagnosis=diagnosis,
             fix=fix,
             from_cache=False,
+            from_heuristic=fix.from_heuristic if fix else False,
         )

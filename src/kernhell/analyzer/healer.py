@@ -215,12 +215,15 @@ class SelectorHealer:
                 confidence = max(0.0, confidence - 0.4)
                 reasoning += " [Warning: Proposed selector failed strict DOM presence check.]"
 
+            is_heuristic = bool(data.get("from_heuristic", False))
+
             fix = SelectorFix(
                 old_selector=failure.broken_selector,
                 new_selector=new_selector,
                 strategy=strategy,
                 confidence=confidence,
                 reasoning=reasoning,
+                from_heuristic=is_heuristic,
             )
 
             # Confidence Threshold Gating
@@ -309,6 +312,7 @@ class SelectorHealer:
                     "strategy": "test_id_match",
                     "confidence": 0.96,
                     "reasoning": f"Located interactive element with data-testid='{tid}' in DOM.",
+                    "from_heuristic": True,
                 })
 
         # 2. Search for interactive elements with id (button, a, input)
@@ -320,6 +324,7 @@ class SelectorHealer:
                     "strategy": "css_fallback",
                     "confidence": 0.94,
                     "reasoning": f"Located interactive element with id='{node_id}' in DOM.",
+                    "from_heuristic": True,
                 })
 
         # 3. Search for button or link with text
@@ -332,6 +337,7 @@ class SelectorHealer:
                     "strategy": "role_match",
                     "confidence": 0.92,
                     "reasoning": f"Located {role} with accessible label '{text}' in DOM.",
+                    "from_heuristic": True,
                 })
 
         # 4. Any element with id
@@ -343,6 +349,7 @@ class SelectorHealer:
                     "strategy": "css_fallback",
                     "confidence": 0.88,
                     "reasoning": f"Located element with id='{node_id}' in DOM.",
+                    "from_heuristic": True,
                 })
 
         # Final fallback
@@ -351,4 +358,5 @@ class SelectorHealer:
             "strategy": "css_fallback",
             "confidence": 0.86,
             "reasoning": "Fallback selector.",
+            "from_heuristic": True,
         })

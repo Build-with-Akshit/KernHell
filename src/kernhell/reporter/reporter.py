@@ -56,17 +56,29 @@ class HealingReporter:
                     f"[bold red]✖ {orig_sel}[/bold red]\n"
                     f"[bold green]✔ {healed_sel}[/bold green]"
                 )
-                source_label = "Cache" if res.from_cache else "AI Healer"
                 conf_pct = f"{int(res.fix.confidence * 100)}%"
                 strategy_val = (
                     res.fix.strategy.value
                     if hasattr(res.fix.strategy, "value")
                     else str(res.fix.strategy)
                 )
-                engine_text = (
-                    f"[bold cyan]{source_label}[/bold cyan] [dim]({conf_pct})[/dim]\n"
-                    f"[dim]{strategy_val}[/dim]"
-                )
+
+                if res.from_cache:
+                    engine_text = (
+                        f"[bold cyan]Semantic Cache[/bold cyan] [dim]({conf_pct})[/dim]\n"
+                        f"[dim]{strategy_val}[/dim]"
+                    )
+                elif getattr(res, "from_heuristic", False) or (res.fix and getattr(res.fix, "from_heuristic", False)):
+                    engine_text = (
+                        f"[bold yellow]DOM Heuristic[/bold yellow] [dim]({conf_pct})[/dim]\n"
+                        f"[dim yellow]Fallback: {strategy_val}[/dim yellow]"
+                    )
+                else:
+                    engine_text = (
+                        f"[bold green]AI Healer[/bold green] [dim]({conf_pct})[/dim]\n"
+                        f"[dim]{strategy_val}[/dim]"
+                    )
+
                 verified_text = (
                     "[bold green]YES[/bold green]"
                     if res.fix.verified
@@ -113,6 +125,7 @@ class HealingReporter:
                     "strategy": r.fix.strategy.value if r.fix else None,
                     "confidence": r.fix.confidence if r.fix else None,
                     "from_cache": r.from_cache,
+                    "from_heuristic": getattr(r, "from_heuristic", False) or (r.fix.from_heuristic if r.fix else False),
                     "skipped": r.skipped,
                     "skip_reason": r.skip_reason,
                     "verified": r.fix.verified if r.fix else False,
