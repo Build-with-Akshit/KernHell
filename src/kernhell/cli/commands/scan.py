@@ -75,15 +75,14 @@ def scan_command(
 
     orchestrator = HealingOrchestrator(cfg)
 
-    with console.status(f"[bold cyan]Scanning [white]{test_file.name}[/white] for selector failures..."):
-        try:
-            results = orchestrator.scan(test_file)
-        except NoFailuresDetectedError as exc:
-            print_clean_pass_panel(test_file.name)
-            raise typer.Exit(code=0)
-        except (PlaywrightNotInstalledError, ScannerError, TestFileNotFoundError) as exc:
-            console.print(f"[bold red]Scan Failed:[/bold red] {exc}")
-            raise typer.Exit(code=1)
+    try:
+        results = orchestrator.scan(test_file)
+    except NoFailuresDetectedError as exc:
+        print_clean_pass_panel(test_file.name)
+        raise typer.Exit(code=0)
+    except (PlaywrightNotInstalledError, ScannerError, TestFileNotFoundError) as exc:
+        console.print(f"[bold red]Scan Failed:[/bold red] {exc}")
+        raise typer.Exit(code=1)
 
     failures = [f for f, _ in results]
     print_scan_summary(failures)

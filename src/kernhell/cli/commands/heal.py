@@ -124,17 +124,16 @@ def heal_command(
     for test_file in test_files:
         original_code = read_file(test_file) if test_file.is_file() else ""
 
-        with console.status(f"[bold cyan]Scanning & healing [white]{test_file.name}[/white]..."):
-            try:
-                report = orchestrator.heal(test_file, dry_run=dry_run)
-                reports.append(report)
-            except NoFailuresDetectedError as exc:
-                if output_format != "json":
-                    print_clean_pass_panel(test_file.name)
-                continue
-            except (PlaywrightNotInstalledError, ScannerError, TestFileNotFoundError) as exc:
-                console.print(f"[bold red]Failed on {test_file.name}:[/bold red] {exc}")
-                continue
+        try:
+            report = orchestrator.heal(test_file, dry_run=dry_run)
+            reports.append(report)
+        except NoFailuresDetectedError as exc:
+            if output_format != "json":
+                print_clean_pass_panel(test_file.name)
+            continue
+        except (PlaywrightNotInstalledError, ScannerError, TestFileNotFoundError) as exc:
+            console.print(f"[bold red]Failed on {test_file.name}:[/bold red] {exc}")
+            continue
 
         if output_format != "json":
             if not report.results:

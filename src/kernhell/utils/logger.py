@@ -93,8 +93,17 @@ class MinimalCLIProcessor:
         elif event == "verifier.failed":
             line = f"  [dim]›[/dim] [bold red]✖[/bold red] Verification failed on candidate selector"
 
+        elif event == "orchestrator.cache_fix_verification_failed.proceeding_to_ai":
+            line = f"  [dim]›[/dim] [dim yellow]Cache suggestion failed live verification — escalating to Healer...[/dim yellow]"
+
+        elif "llm_call_failed" in str(event):
+            line = f"  [dim]›[/dim] [dim yellow]LLM call unavailable/timed out — falling back to heuristic healer...[/dim yellow]"
+
+        elif "no_api_key" in str(event):
+            line = f"  [dim]›[/dim] [dim]No LLM API key configured — using smart heuristic DOM healer...[/dim]"
+
         elif level in ("warning", "error", "critical"):
-            msg = escape(str(event))
+            msg = escape(str(event).replace(".", " ").replace("_", " ").title())
             color = "yellow" if level == "warning" else "red"
             line = f"  [bold {color}]⚠ {msg}[/bold {color}]"
 

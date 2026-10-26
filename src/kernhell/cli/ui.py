@@ -42,8 +42,8 @@ def print_banner() -> None:
     banner_text = Text(_BANNER.strip("\n"), style="bold red")
     console.print(banner_text, highlight=False)
     console.print(
-        f"  [bold white]KernHell[/bold white] [bold cyan]v{__version__}[/bold cyan] "
-        f"[dim]•[/dim] [italic bright_black]Autonomous Playwright Healing Engine[/italic bright_black]"
+        f"  [bold cyan]v{__version__}[/bold cyan] "
+        f"[dim]•[/dim] [italic bright_black]An AI-powered autonomous self-healing testing engine[/italic bright_black]"
     )
     console.print()
 
