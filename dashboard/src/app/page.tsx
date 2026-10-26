@@ -22,6 +22,8 @@ import {
   CheckCircle,
   FileCode,
   RotateCw,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 
 export default function OverviewPage() {
@@ -41,6 +43,7 @@ export default function OverviewPage() {
   const [loading, setLoading] = useState(true);
 
   const [selectedRunIndex, setSelectedRunIndex] = useState<number>(0);
+  const [showPipeline, setShowPipeline] = useState<boolean>(true);
 
   useEffect(() => {
     async function loadData() {
@@ -173,97 +176,103 @@ export default function OverviewPage() {
         </div>
       </section>
 
-      {/* Conceptual Architecture Strip (Placed at bottom for architectural overview) */}
-      <section className="rounded-3xl p-6 sm:p-7 border border-white/[0.08] bg-[#0A0C14]/90 shadow-2xl space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/[0.06] pb-4">
+      {/* Conceptual Architecture Lifecycle (Subtle & Non-Intrusive Informational Schematic) */}
+      <section className="rounded-2xl border border-dashed border-white/[0.08] bg-[#07080E]/50 p-4 sm:p-5 text-gray-400 transition-all">
+        <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2.5">
-            <div className="w-7 h-7 rounded-lg bg-brand-cyan/10 border border-brand-cyan/30 flex items-center justify-center text-brand-cyan">
+            <div className="w-6 h-6 rounded-md bg-white/[0.03] border border-white/[0.06] flex items-center justify-center text-gray-500">
               <Layers className="w-3.5 h-3.5" />
             </div>
-            <div>
-              <span className="text-[10px] font-mono uppercase tracking-widest text-brand-cyan font-semibold">
-                HOW IT WORKS
+            <div className="flex flex-wrap items-baseline gap-x-2">
+              <span className="text-xs font-mono font-medium text-gray-300">
+                Engine Architecture Flow
               </span>
-              <h2 className="text-sm font-mono font-bold text-gray-100">
-                Autonomous Healing Architecture Pipeline
-              </h2>
+              <span className="text-[11px] font-mono text-gray-500">
+                • Conceptual reference only (how healing executes in background)
+              </span>
             </div>
           </div>
-          <span className="text-[11px] font-mono text-brand-emerald flex items-center space-x-1.5 self-start sm:self-auto px-2.5 py-1 rounded-full bg-brand-emerald/10 border border-brand-emerald/20">
-            <CheckCircle className="w-3 h-3" />
-            <span>Dual-Pass Zero-Hallucination Pipeline</span>
-          </span>
+
+          <div className="flex items-center space-x-2.5">
+            <span className="hidden md:inline-block text-[10px] font-mono text-gray-500 px-2 py-0.5 rounded bg-white/[0.02] border border-white/[0.05]">
+              6-stage background spec
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowPipeline(!showPipeline)}
+              className="flex items-center space-x-1.5 text-[11px] font-mono text-gray-400 hover:text-white px-2.5 py-1 rounded-lg bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] transition-colors"
+            >
+              <span>{showPipeline ? 'Collapse' : 'Expand Flow'}</span>
+              {showPipeline ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            </button>
+          </div>
         </div>
 
-        {/* Horizontal Flowchart Node Strip */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-          {[
-            {
-              step: '01',
-              title: 'Subprocess Intercept',
-              desc: 'Catches Playwright locator failures & captures live DOM snapshot',
-              badge: 'PLAYWRIGHT',
-              color: 'border-brand-red/30 bg-brand-red/[0.04] text-brand-red',
-            },
-            {
-              step: '02',
-              title: 'Selectolax Pruning',
-              desc: 'Strips SVGs/scripts, cuts tokens by 85% via Lexbor parser',
-              badge: 'LEXBOR',
-              color: 'border-yellow-500/30 bg-yellow-500/[0.04] text-yellow-400',
-            },
-            {
-              step: '03',
-              title: 'Dense Vector Cache',
-              desc: '384D cosine similarity lookup (<5ms, zero LLM cost)',
-              badge: 'MINILM-L6',
-              color: 'border-brand-cyan/30 bg-brand-cyan/[0.04] text-brand-cyan',
-            },
-            {
-              step: '04',
-              title: 'Intent AI Brain',
-              desc: 'Diagnoses RENAME vs MISSING with anti-hallucination guard',
-              badge: 'GEMINI 3.5',
-              color: 'border-brand-purple/30 bg-brand-purple/[0.04] text-brand-purple',
-            },
-            {
-              step: '05',
-              title: 'DOM Verification',
-              desc: 'Strictly verifies single unambiguous match on live pruned DOM',
-              badge: 'STRICT MATCH',
-              color: 'border-blue-500/30 bg-blue-500/[0.04] text-blue-400',
-            },
-            {
-              step: '06',
-              title: 'LibCST Patch',
-              desc: 'Surgically modifies AST; preserves comments & whitespace',
-              badge: 'ATOMIC ROLLBACK',
-              color: 'border-brand-emerald/30 bg-brand-emerald/[0.04] text-brand-emerald',
-            },
-          ].map((item, idx) => (
-            <div
-              key={idx}
-              className={`p-3.5 rounded-xl border ${item.color} flex flex-col justify-between space-y-2 hover:border-white/20 transition-all`}
-            >
-              <div>
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-[10px] font-bold tracking-widest opacity-60">
-                    STAGE {item.step}
-                  </span>
-                  <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-white/[0.05] border border-white/10 uppercase">
-                    {item.badge}
-                  </span>
+        {showPipeline && (
+          <div className="mt-4 pt-3.5 border-t border-white/[0.04]">
+            {/* Sleek horizontal stepper track */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-2.5">
+              {[
+                {
+                  step: '01',
+                  title: 'Subprocess Intercept',
+                  tech: 'PLAYWRIGHT',
+                  desc: 'Catches locator breakages & grabs live browser DOM snapshot',
+                },
+                {
+                  step: '02',
+                  title: 'Lexbor Pruning',
+                  tech: 'SELECTOLAX',
+                  desc: 'Strips SVGs/styles, shrinking prompt tokens by 85%',
+                },
+                {
+                  step: '03',
+                  title: 'Vector Cache',
+                  tech: 'MINILM-L6',
+                  desc: '<5ms cosine lookup in local 384D semantic vector index',
+                },
+                {
+                  step: '04',
+                  title: 'AI Reasoning',
+                  tech: 'GEMINI 3.5',
+                  desc: 'Diagnoses rename vs real bug with anti-hallucination guard',
+                },
+                {
+                  step: '05',
+                  title: 'DOM Verification',
+                  tech: 'STRICT MATCH',
+                  desc: 'Dual-pass verification ensures element exists unambiguously',
+                },
+                {
+                  step: '06',
+                  title: 'LibCST Patch',
+                  tech: 'SURGICAL CST',
+                  desc: 'Surgically edits test file with 100% comment/whitespace integrity',
+                },
+              ].map((item, idx) => (
+                <div
+                  key={idx}
+                  className="p-3 rounded-xl border border-white/[0.04] bg-white/[0.015] hover:bg-white/[0.03] hover:border-white/[0.08] transition-all flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex items-center justify-between text-[10px] font-mono text-gray-500 mb-1.5">
+                      <span>STAGE {item.step}</span>
+                      <span className="text-[9px] px-1 py-0.2 rounded bg-white/[0.03] border border-white/[0.05] text-gray-400">
+                        {item.tech}
+                      </span>
+                    </div>
+                    <h4 className="font-mono text-xs font-medium text-gray-200">
+                      {item.title}
+                    </h4>
+                    <p className="text-[10px] text-gray-500 font-sans mt-1 leading-snug">
+                      {item.desc}
+                    </p>
+                  </div>
                 </div>
-                <h3 className="font-mono text-xs font-bold text-gray-100 mt-2">
-                  {item.title}
-                </h3>
-                <p className="text-[11px] text-gray-400 font-sans mt-1 leading-snug">
-                  {item.desc}
-                </p>
-              </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
+        )}
       </section>
     </div>
   );
