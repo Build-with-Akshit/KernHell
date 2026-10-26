@@ -14,8 +14,11 @@ from rich.console import Console
 
 from kernhell.cli.ui import (
     print_banner,
+    print_clean_pass_panel,
     print_failure_context,
+    print_heal_success_badge,
     print_pruning_stats,
+    print_skipped_guardrail,
 )
 from kernhell.core.config import load_config
 from kernhell.core.exceptions import (
@@ -77,7 +80,12 @@ def heal_command(
     cfg = load_config(config_path)
     from kernhell.cli.commands.setup import check_first_run_setup
     cfg = check_first_run_setup(console, cfg)
-    log_level = "DEBUG" if verbose else cfg.logging.level
+    if verbose:
+        log_level = "DEBUG"
+    elif json_log or output_format != "text":
+        log_level = cfg.logging.level
+    else:
+        log_level = "WARNING"
     setup_logging(level=log_level, json_output=json_log or cfg.logging.json_output)
 
     if output_format != "json":
@@ -122,30 +130,36 @@ def heal_command(
                 reports.append(report)
             except NoFailuresDetectedError as exc:
                 if output_format != "json":
-                    console.print(f"[bold green]✔[/bold green] {test_file.name}: {exc}")
+                    print_clean_pass_panel(test_file.name)
                 continue
             except (PlaywrightNotInstalledError, ScannerError, TestFileNotFoundError) as exc:
                 console.print(f"[bold red]Failed on {test_file.name}:[/bold red] {exc}")
                 continue
 
-        if output_format != "json" and report.results:
-            for i, result in enumerate(report.results, start=1):
-                print_failure_context(result.failure, index=i)
-                if result.pruned_dom:
-                    print_pruning_stats(result.pruned_dom)
-                console.print()
+        if output_format != "json":
+            if not report.results:
+                print_clean_pass_panel(test_file.name, duration_ms=report.duration_ms)
+            else:
+                for i, result in enumerate(report.results, start=1):
+                    print_failure_context(result.failure, index=i)
+                    if result.pruned_dom:
+                        print_pruning_stats(result.pruned_dom)
+                    if result.skipped:
+                        print_skipped_guardrail(result)
+                    console.print()
 
-            # Render surgical AST diff if file was patched
-            if not dry_run and original_code and test_file.is_file():
-                patched_code = read_file(test_file)
-                if patched_code != original_code:
-                    HealingReporter.render_diff(
-                        old_code=original_code,
-                        new_code=patched_code,
-                        filename=test_file.name,
-                    )
+                # Render surgical AST diff if file was patched
+                if not dry_run and original_code and test_file.is_file():
+                    patched_code = read_file(test_file)
+                    if patched_code != original_code:
+                        HealingReporter.render_diff(
+                            old_code=original_code,
+                            new_code=patched_code,
+                            filename=test_file.name,
+                        )
 
-            HealingReporter.print_summary(report)
+                HealingReporter.print_summary(report)
+                print_heal_success_badge(report)
 
     # JSON export handling
     if output_format == "json" or output_file is not None:

@@ -41,9 +41,11 @@ class HealingReporter:
         syntax = Syntax(diff_text, "diff", theme="monokai", line_numbers=False)
         panel = Panel(
             syntax,
-            title="[bold green]Surgical AST Diff (Comments & Spacing Preserved)[/bold green]",
+            title=f"[bold green]⚡ Surgical AST Diff ({filename})[/bold green]" if filename else "[bold green]⚡ Surgical AST Diff[/bold green]",
+            subtitle="[dim]Comments, indentation & formatting preserved[/dim]",
             border_style="green",
             box=box.ROUNDED,
+            padding=(0, 1),
         )
         console.print(panel)
 
@@ -51,16 +53,16 @@ class HealingReporter:
     def print_summary(report: HealingReport) -> None:
         """Print full healing summary table to terminal."""
         table = Table(
-            title=f"KernHell Healing Report: {report.test_file.name}",
+            title=f"KernHell Healing Report: [bold cyan]{report.test_file.name}[/bold cyan]",
             box=box.ROUNDED,
             show_lines=True,
         )
         table.add_column("#", style="dim", width=4)
-        table.add_column("Original Selector", style="red")
+        table.add_column("Original Selector", style="bold red")
         table.add_column("Healed Selector", style="bold green")
         table.add_column("Strategy", style="cyan")
-        table.add_column("Confidence", justify="right")
-        table.add_column("Source", style="yellow")
+        table.add_column("Confidence", justify="right", style="bold yellow")
+        table.add_column("Source", style="bold magenta")
         table.add_column("Verified", justify="center")
 
         from rich.markup import escape

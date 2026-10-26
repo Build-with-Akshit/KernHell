@@ -13,6 +13,7 @@ from rich.console import Console
 
 from kernhell.cli.ui import (
     print_banner,
+    print_clean_pass_panel,
     print_failure_context,
     print_pruning_stats,
     print_scan_summary,
@@ -58,7 +59,12 @@ def scan_command(
     cfg = load_config(config_path)
     from kernhell.cli.commands.setup import check_first_run_setup
     cfg = check_first_run_setup(console, cfg)
-    log_level = "DEBUG" if verbose else cfg.logging.level
+    if verbose:
+        log_level = "DEBUG"
+    elif json_log:
+        log_level = cfg.logging.level
+    else:
+        log_level = "WARNING"
     setup_logging(level=log_level, json_output=json_log or cfg.logging.json_output)
 
     print_banner()
@@ -73,7 +79,7 @@ def scan_command(
         try:
             results = orchestrator.scan(test_file)
         except NoFailuresDetectedError as exc:
-            console.print(f"[bold green]✔[/bold green] {exc}")
+            print_clean_pass_panel(test_file.name)
             raise typer.Exit(code=0)
         except (PlaywrightNotInstalledError, ScannerError, TestFileNotFoundError) as exc:
             console.print(f"[bold red]Scan Failed:[/bold red] {exc}")
