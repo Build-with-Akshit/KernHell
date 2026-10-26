@@ -33,6 +33,10 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+pyvenv.cfg
+Scripts/
+Include/
+Lib/
 
 # Testing & Coverage
 .pytest_cache/
@@ -52,9 +56,16 @@ dmypy.json
 .ruff_cache/
 
 # KernHell runtime
+.kernhell/
 .kernhell_cache/
 *.kernhell.bak
 .kernhell_*.tmp
+
+# Scratch & Temporary Testing Files
+test_demo.py
+test_demo.spec.ts
+*.tmp
+*.log
 
 # Playwright
 test-results/
