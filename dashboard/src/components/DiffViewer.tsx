@@ -20,10 +20,11 @@ export default function DiffViewer({
 }: DiffViewerProps) {
   const [copied, setCopied] = useState(false);
 
+  const fileName = testFile.split(/[/\\]/).pop() || 'test.py';
   const fallbackDiff =
     diff ||
-    `--- a/${testFile.split('/').pop() || 'test.py'}
-+++ b/${testFile.split('/').pop() || 'test.py'}
+    `--- a/${fileName}
++++ b/${fileName}
 @@ -14,3 +14,3 @@
      # Step 2: click the purchase action (needs to be healed)
 -    page.click("${oldSelector || '#buy-now'}")  # inline comment here

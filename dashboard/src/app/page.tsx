@@ -153,7 +153,7 @@ export default function OverviewPage() {
           </h2>
 
           <DiffViewer
-            title={activeRun ? `AST Patch: ${activeRun.test_file.split('/').pop()}` : 'Featured Surgical AST Patch'}
+            title={activeRun ? `AST Patch: ${activeRun.test_file.split(/[/\\]/).pop()}` : 'Featured Surgical AST Patch'}
             testFile={activeRun?.test_file || 'tests/test_checkout_flow.py'}
             diff={activeRun?.diff}
             oldSelector={activeRun?.results?.[0]?.broken_selector || '#buy-now'}
@@ -200,10 +200,18 @@ export default function OverviewPage() {
             <button
               type="button"
               onClick={() => setShowPipeline(!showPipeline)}
-              className="flex items-center space-x-1.5 text-[11px] font-mono text-gray-400 hover:text-white px-2.5 py-1 rounded-lg bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] transition-colors"
+              className={`flex items-center space-x-1.5 text-[11px] font-mono font-semibold px-3 py-1.5 rounded-lg border transition-all duration-200 shadow-sm ${
+                showPipeline
+                  ? 'bg-brand-cyan/15 hover:bg-brand-cyan/25 text-brand-cyan border-brand-cyan/40 shadow-[0_0_12px_rgba(0,240,255,0.2)]'
+                  : 'bg-brand-red/15 hover:bg-brand-red/25 text-brand-red border-brand-red/40 shadow-[0_0_12px_rgba(255,51,75,0.2)]'
+              }`}
             >
-              <span>{showPipeline ? 'Collapse' : 'Expand Flow'}</span>
-              {showPipeline ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              <span>{showPipeline ? 'Collapse Flow' : 'Expand Flow'}</span>
+              {showPipeline ? (
+                <ChevronUp className="w-3.5 h-3.5 text-brand-cyan" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5 text-brand-red" />
+              )}
             </button>
           </div>
         </div>
@@ -257,7 +265,7 @@ export default function OverviewPage() {
                   <div>
                     <div className="flex items-center justify-between text-[10px] font-mono text-gray-500 mb-1.5">
                       <span>STAGE {item.step}</span>
-                      <span className="text-[9px] px-1 py-0.2 rounded bg-white/[0.03] border border-white/[0.05] text-gray-400">
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/[0.03] border border-white/[0.05] text-gray-400">
                         {item.tech}
                       </span>
                     </div>
