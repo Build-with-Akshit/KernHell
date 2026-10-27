@@ -97,3 +97,21 @@ def test_cli_cache_list_does_not_import_litellm() -> None:
     proc = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
     assert proc.returncode == 0, f"Subprocess validation failed:\n{proc.stderr}\n{proc.stdout}"
 
+
+def test_cli_dashboard_dual_orchestration() -> None:
+    """Ensure dashboard command orchestrates both FastAPI and Next.js UI subprocesses."""
+    with patch("uvicorn.run") as mock_uvicorn_run, \
+         patch("subprocess.Popen") as mock_popen, \
+         patch("kernhell.cli.commands.dashboard._terminate_process_tree") as mock_cleanup:
+
+        mock_proc = MagicMock()
+        mock_popen.return_value = mock_proc
+
+        result = runner.invoke(app, ["dashboard", "--no-open"])
+        assert result.exit_code == 0
+        assert "Mission Control Active" in result.output
+        assert "Web Dashboard UI" in result.output
+        mock_uvicorn_run.assert_called_once()
+        mock_cleanup.assert_called_once()
+
+
