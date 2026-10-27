@@ -259,8 +259,6 @@ class SelectorHealer:
         """Call LLM via litellm or execute deterministic heuristic fallback."""
         try:
             import litellm
-            litellm.suppress_debug_info = True
-            litellm.set_verbose = False
         except ImportError:
             logger.warning("healer.litellm_not_installed.using_heuristic")
             return self._heuristic_healing_fallback(dom_text, broken_selector)
