@@ -128,8 +128,6 @@ class FailureAnalyzer:
         # Check if litellm is available
         try:
             import litellm
-            litellm.suppress_debug_info = True
-            litellm.set_verbose = False
         except ImportError:
             # Fallback heuristic mode when running offline or in unit tests
             logger.warning("analyzer.litellm_not_installed.using_heuristic")

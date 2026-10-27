@@ -129,13 +129,15 @@ def setup_logging(*, level: str = "INFO", json_output: bool = False) -> None:
     """
     import os
 
-    # Silence noisy LiteLLM warnings in interactive CLI via env vars (zero import overhead)
+    # Silence noisy LiteLLM warnings in interactive CLI
     os.environ["LITELLM_LOG"] = "ERROR"
-    os.environ.setdefault("LITELLM_LOCAL_MODEL_COST_MAP", "True")
-    if "litellm" in sys.modules:
-        litellm_mod = sys.modules["litellm"]
-        litellm_mod.suppress_debug_info = True
-        litellm_mod.set_verbose = False
+    try:
+        import litellm
+
+        litellm.suppress_debug_info = True
+        litellm.set_verbose = False
+    except ImportError:
+        pass
 
     log_level = getattr(logging, level.upper(), logging.INFO)
     is_debug = log_level <= logging.DEBUG
