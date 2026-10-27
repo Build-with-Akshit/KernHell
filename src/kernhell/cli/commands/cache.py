@@ -38,7 +38,7 @@ def list_cache(
 
     from rich.markup import escape
 
-    table = Table(title="🧠 KernHell Semantic Memory Cache", box=box.ROUNDED, expand=True)
+    table = Table(title="KernHell Semantic Memory Cache", box=box.ROUNDED, expand=True)
     table.add_column("Original Selector", style="red", ratio=1, overflow="fold")
     table.add_column("Healed Selector", style="bold green", ratio=1, overflow="fold")
     table.add_column("Strategy", style="cyan", width=18, justify="center")
@@ -66,7 +66,7 @@ def stats_cache(
     mgr = CacheManager(cfg)
 
     stats = mgr.get_stats()
-    table = Table(title="📊 Semantic Memory Metrics", box=box.ROUNDED)
+    table = Table(title="Semantic Memory Metrics", box=box.ROUNDED)
     table.add_column("Metric", style="bold")
     table.add_column("Value", justify="right")
 
@@ -95,4 +95,4 @@ def clear_cache(
             return
 
     count = mgr.clear()
-    console.print(f"[bold green]✔ Successfully cleared {count} entries from semantic cache.[/bold green]")
+    console.print(f"[bold green]Successfully cleared {count} entries from semantic cache.[/bold green]")

@@ -44,12 +44,12 @@ class MinimalCLIProcessor:
             line = f"  [dim]›[/dim] Running Playwright suite on [white]{test_file}[/white]..."
 
         elif event == "scanner.pytest.passed":
-            line = f"  [dim]›[/dim] [bold green]✔[/bold green] Playwright run completed (all tests passed)"
+            line = f"  [dim]›[/dim] [bold green]PASS[/bold green] Playwright run completed (all tests passed)"
 
         elif event == "parser.failure_found":
             line_num = event_dict.get("line", "?")
             sel = escape(str(event_dict.get("selector", "")))
-            line = f"  [dim]›[/dim] [bold red]✖[/bold red] Selector failure caught at line [bold yellow]{line_num}[/bold yellow]: [bold red]{sel}[/bold red]"
+            line = f"  [dim]›[/dim] [bold red]FAIL[/bold red] Selector failure caught at line [bold yellow]{line_num}[/bold yellow]: [bold red]{sel}[/bold red]"
 
         elif event == "pruner.done":
             orig = event_dict.get("original_size", 0)
@@ -64,7 +64,7 @@ class MinimalCLIProcessor:
             except Exception:
                 score_pct = 95
             healed = escape(str(event_dict.get("healed", "")))
-            line = f"  [dim]›[/dim] [bold green]⚡[/bold green] Semantic cache hit ([bold yellow]{score_pct}%[/bold yellow]): [bold green]{healed}[/bold green]"
+            line = f"  [dim]›[/dim] [bold green]CACHE[/bold green] Semantic cache hit ([bold yellow]{score_pct}%[/bold yellow]): [bold green]{healed}[/bold green]"
 
         elif event == "cache.miss":
             line = f"  [dim]›[/dim] Semantic cache miss — escalating to AI healer..."
@@ -88,10 +88,10 @@ class MinimalCLIProcessor:
             line = f"  [dim]›[/dim] Re-running Playwright to verify fix..."
 
         elif event == "verifier.passed":
-            line = f"  [dim]›[/dim] [bold green]✔[/bold green] Verification passed! Repaired selector confirmed working"
+            line = f"  [dim]›[/dim] [bold green]PASS[/bold green] Verification passed! Repaired selector confirmed working"
 
         elif event == "verifier.failed":
-            line = f"  [dim]›[/dim] [bold red]✖[/bold red] Verification failed on candidate selector"
+            line = f"  [dim]›[/dim] [bold red]FAIL[/bold red] Verification failed on candidate selector"
 
         elif event == "orchestrator.cache_fix_verification_failed.proceeding_to_ai":
             line = f"  [dim]›[/dim] [dim yellow]Cache suggestion failed live verification — escalating to Healer...[/dim yellow]"
@@ -105,7 +105,7 @@ class MinimalCLIProcessor:
         elif level in ("warning", "error", "critical"):
             msg = escape(str(event).replace(".", " ").replace("_", " ").title())
             color = "yellow" if level == "warning" else "red"
-            line = f"  [bold {color}]⚠ {msg}[/bold {color}]"
+            line = f"  [bold {color}]{msg}[/bold {color}]"
 
         if line:
             _cli_console.print(line)

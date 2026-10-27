@@ -53,8 +53,8 @@ class HealingReporter:
             if res.fix:
                 healed_sel = escape(res.fix.new_selector)
                 transform_text = (
-                    f"[bold red]✖ {orig_sel}[/bold red]\n"
-                    f"[bold green]✔ {healed_sel}[/bold green]"
+                    f"[bold red]- {orig_sel}[/bold red]\n"
+                    f"[bold green]+ {healed_sel}[/bold green]"
                 )
                 conf_pct = f"{int(res.fix.confidence * 100)}%"
                 strategy_val = (
@@ -92,8 +92,8 @@ class HealingReporter:
                     else "Element absent on live page"
                 )
                 transform_text = (
-                    f"[bold red]✖ {orig_sel}[/bold red]\n"
-                    f"[dim yellow]↳ {reason}[/dim yellow]"
+                    f"[bold red]- {orig_sel}[/bold red]\n"
+                    f"[dim yellow]-> {reason}[/dim yellow]"
                 )
                 table.add_row(
                     str(i),

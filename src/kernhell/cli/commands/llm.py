@@ -37,7 +37,7 @@ def show_llm_status() -> None:
     cfg = load_config()
     resolved_key = cfg.llm.get_resolved_api_key()
 
-    table = Table(title="🤖 Active AI / LLM Engine", box=box.ROUNDED)
+    table = Table(title="Active AI / LLM Engine", box=box.ROUNDED)
     table.add_column("Property", style="bold cyan", width=18)
     table.add_column("Value", style="white")
 
@@ -52,9 +52,9 @@ def show_llm_status() -> None:
     table.add_row("Model", cfg.llm.model)
     table.add_row(
         "API Key Status",
-        "[bold green]✔ Configured[/bold green]" if resolved_key and cfg.llm.provider != "ollama"
+        "[bold green]Configured[/bold green]" if resolved_key and cfg.llm.provider != "ollama"
         else "[dim]Not Required (Local Ollama)[/dim]" if cfg.llm.provider == "ollama"
-        else "[bold yellow]⚠ Missing (Emergency DOM Heuristic active)[/bold yellow]"
+        else "[bold yellow]Missing (Emergency DOM Heuristic active)[/bold yellow]"
     )
     if cfg.llm.api_base:
         table.add_row("API Base URL", cfg.llm.api_base)
@@ -185,7 +185,7 @@ def set_llm(
 
     console.print(
         Panel(
-            f"[bold green]✔ Successfully switched LLM to {info['name']}![/bold green]\n"
+            f"[bold green]Successfully switched LLM to {info['name']}![/bold green]\n"
             f"Model: [cyan]{final_model}[/cyan]\n"
             f"Config saved to: [dim]{global_config_file}[/dim]",
             box=box.ROUNDED,

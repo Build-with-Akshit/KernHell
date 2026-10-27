@@ -57,13 +57,13 @@ def print_clean_pass_panel(filename: str, duration_ms: Optional[int] = None) -> 
     """Display a prominent, high-visibility panel when all tests pass cleanly."""
     timing = f" in [bold cyan]{duration_ms:,}ms[/bold cyan]" if duration_ms is not None else ""
     content = (
-        f"[bold green]✔ All Tests Passed Cleanly![/bold green]\n\n"
+        f"[bold green]All Tests Passed Cleanly![/bold green]\n\n"
         f"No broken locators or selector failures detected in [bold cyan]{filename}[/bold cyan].\n"
         f"[dim]Playwright test suite executed cleanly{timing} — nothing to heal![/dim]"
     )
     panel = Panel(
         content,
-        title=f"[bold green]✨ {filename} Healthy[/bold green]",
+        title=f"[bold green]{filename} Healthy[/bold green]",
         border_style="green",
         box=box.ROUNDED,
         padding=(1, 2),
@@ -77,7 +77,7 @@ def print_skipped_guardrail(result: HealingResult) -> None:
     """Display Anti-Hallucination Guardrail warning panel."""
     reason = result.skip_reason or "Potential application defect detected."
     panel = Panel(
-        f"[bold yellow]🛡 Anti-Hallucination Guardrail Active[/bold yellow]\n\n"
+        f"[bold yellow]Anti-Hallucination Guardrail Active[/bold yellow]\n\n"
         f"KernHell did [bold red]not[/bold red] mutate the selector in this test because the element is absent on the page.\n"
         f"This indicates a genuine application bug rather than a selector drift.\n\n"
         f"[bold]Root Cause / Reason:[/bold]\n"
@@ -98,10 +98,10 @@ def print_heal_success_badge(report: HealingReport) -> None:
             else "[yellow](manual verification recommended)[/yellow]"
         )
         panel = Panel(
-            f"[bold green]✨ Self-Healing Succeeded![/bold green]\n\n"
+            f"[bold green]Self-Healing Succeeded![/bold green]\n\n"
             f"[bold cyan]{report.healed_count}[/bold cyan] broken selector(s) repaired {verified_msg} in [bold cyan]{report.duration_ms:,}ms[/bold cyan].\n"
             f"[dim]Test suite in [white]{report.test_file.name}[/white] is now verified healthy.[/dim]",
-            title=f"[bold green]✔ {report.test_file.name} Restored[/bold green]",
+            title=f"[bold green]{report.test_file.name} Restored[/bold green]",
             border_style="green",
             box=box.ROUNDED,
             padding=(1, 2),
@@ -110,10 +110,10 @@ def print_heal_success_badge(report: HealingReport) -> None:
         console.print()
     elif report.skipped_count > 0:
         panel = Panel(
-            f"[bold yellow]⚠ Healing Protected by Guardrails[/bold yellow]\n\n"
+            f"[bold yellow]Healing Protected by Guardrails[/bold yellow]\n\n"
             f"All [bold yellow]{report.skipped_count}[/bold yellow] detected failure(s) were flagged as genuine application bugs.\n"
             f"[dim]No source code was mutated to protect test suite integrity.[/dim]",
-            title=f"[bold yellow]🛡 Guardrail Protected: {report.test_file.name}[/bold yellow]",
+            title=f"[bold yellow]Guardrail Protected: {report.test_file.name}[/bold yellow]",
             border_style="yellow",
             box=box.ROUNDED,
             padding=(1, 2),
@@ -163,9 +163,9 @@ def render_unified_patch_panel(original_code: str, patched_code: str, filename: 
             text.append(f"{orig_lines[idx]}\n", style="dim")
 
     title = (
-        f"[bold green]⚡ Surgical AST Patch ({filename})[/bold green]"
+        f"[bold green]Surgical AST Patch ({filename})[/bold green]"
         if filename
-        else "[bold green]⚡ Surgical AST Patch[/bold green]"
+        else "[bold green]Surgical AST Patch[/bold green]"
     )
     return Panel(
         text,
@@ -199,7 +199,7 @@ def print_failure_context(ctx: FailureContext, index: int = 1, show_surrounding_
 
     panel = Panel(
         table,
-        title=f"[bold red]💀 Failure #{index}[/bold red]",
+        title=f"[bold red]Failure #{index}[/bold red]",
         border_style="red",
         box=box.ROUNDED,
     )
@@ -222,7 +222,7 @@ def print_failure_context(ctx: FailureContext, index: int = 1, show_surrounding_
 def print_pruning_stats(pruned: PrunedDOM) -> None:
     """Display DOM pruning statistics."""
     console.print(
-        f"  [bold magenta]🔪 DOM Pruned:[/bold magenta] "
+        f"  [bold magenta]DOM Pruned:[/bold magenta] "
         f"[dim]{pruned.original_size:,}[/dim] → "
         f"[bold green]{pruned.pruned_size:,}[/bold green] bytes "
         f"([bold green]-{pruned.reduction_pct}%[/bold green])"
@@ -241,7 +241,7 @@ def print_scan_summary(failures: list[FailureContext]) -> None:
         return
 
     table = Table(
-        title="🔍 Detected Selector Failures",
+        title="Detected Selector Failures",
         box=box.ROUNDED,
         show_lines=True,
     )
@@ -262,7 +262,7 @@ def print_scan_summary(failures: list[FailureContext]) -> None:
 
     console.print(table)
     console.print(
-        f"\n  [bold red]✖[/bold red] Found [bold red]{len(failures)}[/bold red] broken selector(s).\n"
+        f"\n  [bold red]Found {len(failures)} broken selector(s).[/bold red]\n"
     )
 
 
@@ -274,7 +274,7 @@ def print_scan_summary(failures: list[FailureContext]) -> None:
 def print_healing_report(report: HealingReport) -> None:
     """Display the final healing report."""
     table = Table(
-        title="🔥 KernHell Healing Report",
+        title="KernHell Healing Report",
         box=box.DOUBLE_EDGE,
     )
     table.add_column("Metric", style="bold")
@@ -288,9 +288,9 @@ def print_healing_report(report: HealingReport) -> None:
     table.add_row("Duration", f"{report.duration_ms}ms")
     table.add_row(
         "Status",
-        "[bold green]✅ PASSED[/bold green]"
+        "[bold green]PASSED[/bold green]"
         if report.verification_passed
-        else "[bold red]❌ FAILED[/bold red]",
+        else "[bold red]FAILED[/bold red]",
     )
 
     console.print(table)

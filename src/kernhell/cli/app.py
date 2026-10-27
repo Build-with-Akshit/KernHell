@@ -1,6 +1,9 @@
 """Main CLI application entrypoint for KernHell."""
 
+from __future__ import annotations
+
 import sys
+from pathlib import Path
 
 if sys.platform == "win32":
     if hasattr(sys.stdout, "reconfigure"):
@@ -19,6 +22,7 @@ from kernhell.cli.commands.heal import heal_command
 from kernhell.cli.commands.llm import llm_app, switch_llm
 from kernhell.cli.commands.scan import scan_command
 from kernhell.cli.commands.setup import setup_command
+from kernhell.cli.ui import print_banner
 
 console = Console(stderr=True)
 
@@ -63,11 +67,7 @@ def main(
 ) -> None:
     """KernHell CLI entrypoint callback."""
     if ctx.invoked_subcommand is None:
-        setup_marker = Path.home() / ".kernhell" / ".setup_done"
-        if not setup_marker.exists():
-            from kernhell.cli.commands.setup import check_first_run_setup
-            from kernhell.core.config import load_config
-            check_first_run_setup(console, load_config())
+        print_banner()
         console.print(ctx.get_help())
         raise typer.Exit()
 

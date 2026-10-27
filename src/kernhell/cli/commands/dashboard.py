@@ -41,7 +41,7 @@ def dashboard_command(
         f"[bold cyan]Web Dashboard UI:[/bold cyan]    [underline]{web_url}[/underline]\n\n"
         f"[dim]Press Ctrl+C to terminate the dashboard server.[/dim]"
     )
-    console.print(Panel(panel_content, title="🚀 Mission Control Active", border_style="cyan"))
+    console.print(Panel(panel_content, title="Mission Control Active", border_style="cyan"))
 
     if not no_open:
         try:

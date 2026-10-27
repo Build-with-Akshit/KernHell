@@ -29,7 +29,7 @@ def show_config(
     cfg = load_config(config_path)
     setup_logging(level=cfg.logging.level)
 
-    table = Table(title="⚙️ KernHell Active Configuration", box=box.ROUNDED)
+    table = Table(title="KernHell Active Configuration", box=box.ROUNDED)
     table.add_column("Section", style="bold cyan")
     table.add_column("Setting", style="yellow")
     table.add_column("Value")

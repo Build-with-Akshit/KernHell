@@ -108,7 +108,7 @@ def run_setup_wizard() -> KernHellConfig:
             break
 
         console.print(
-            f"[bold red]✖ Invalid choice '{choice}'. Please select a valid option between 1 and 5.[/bold red]"
+            f"[bold red]Invalid choice '{choice}'. Please select a valid option between 1 and 5.[/bold red]"
         )
 
     selected = PROVIDER_DETAILS[choice]
@@ -143,7 +143,7 @@ def run_setup_wizard() -> KernHellConfig:
             ).strip()
             if not api_key:
                 console.print(
-                    "[dim yellow]⚠ No API key entered. KernHell will use Emergency DOM Heuristic Fallback until configured.[/dim yellow]"
+                    "[dim yellow]Notice: No API key entered. KernHell will use Emergency DOM Heuristic Fallback until configured.[/dim yellow]"
                 )
 
         change_model = typer.confirm(f"Use default model '{model}'?", default=True)
@@ -166,7 +166,7 @@ def run_setup_wizard() -> KernHellConfig:
         env_lines.append(f"{env_var}={api_key}")
         global_env_file.write_text("\n".join(env_lines) + "\n", encoding="utf-8")
         os.environ[env_var] = api_key
-        console.print(f"[green]✔ Key saved securely to {global_env_file}[/green]")
+        console.print(f"[green]Key saved securely to {global_env_file}[/green]")
 
     # Build TOML configuration
     toml_lines = [
@@ -227,7 +227,7 @@ def run_setup_wizard() -> KernHellConfig:
     console.print(
         Panel(
             summary_table,
-            title="[bold green]✔ KernHell Configured Successfully[/bold green]",
+            title="[bold green]KernHell Configured Successfully[/bold green]",
             box=box.ROUNDED,
         )
     )
@@ -253,7 +253,7 @@ def check_first_run_setup(console: Console, cfg: KernHellConfig) -> KernHellConf
         return cfg
 
     console.print(
-        "\n[bold yellow]⚡ Welcome to KernHell![/bold yellow] "
+        "\n[bold yellow]Welcome to KernHell![/bold yellow] "
         "Let's configure your AI healing engine (10-second setup)."
     )
     return run_setup_wizard()
