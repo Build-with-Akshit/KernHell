@@ -17,7 +17,7 @@ import {
 
 export default function CachePage() {
   const [records, setRecords] = useState<CacheRecord[]>(DEFAULT_CACHE);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isClearing, setIsClearing] = useState(false);
 

@@ -174,10 +174,7 @@ export default function PlaygroundPage() {
       <div className="glass-panel p-6 rounded-3xl border border-surface-border">
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div>
-            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-brand-cyan/10 border border-brand-cyan/30 text-brand-cyan text-xs font-mono font-medium mb-3">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>INTERACTIVE AI HEALING SIMULATOR</span>
-            </div>
+           
             <h1 className="text-2xl sm:text-3xl font-black text-white font-sans">
               Test Healer Sandbox
             </h1>

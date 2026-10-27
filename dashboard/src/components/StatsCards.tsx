@@ -19,7 +19,7 @@ export default function StatsCards({ stats, loading }: StatsCardsProps) {
       gradient: 'from-brand-red/20 to-brand-crimson/5',
       iconColor: 'text-brand-red',
       borderGlow: 'hover:border-brand-red/50',
-      badge: '100% Verified',
+      badge: stats.total_healed > 0 ? '100% Verified' : 'Standby',
       badgeColor: 'bg-brand-red/10 text-brand-red border-brand-red/30',
     },
     {
@@ -52,7 +52,7 @@ export default function StatsCards({ stats, loading }: StatsCardsProps) {
       gradient: 'from-brand-emerald/20 to-emerald-600/5',
       iconColor: 'text-brand-emerald',
       borderGlow: 'hover:border-brand-emerald/50',
-      badge: 'ROI 14.8x',
+      badge: stats.dollars_saved > 0 ? `ROI ${(stats.dollars_saved / 85).toFixed(1)}x` : 'Zero Cost',
       badgeColor: 'bg-brand-emerald/10 text-brand-emerald border-brand-emerald/30',
     },
   ];

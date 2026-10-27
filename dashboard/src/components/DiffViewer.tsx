@@ -14,29 +14,45 @@ interface DiffViewerProps {
 export default function DiffViewer({
   diff,
   title = 'Surgical CST Code Patch',
-  testFile = 'tests/test_checkout_flow.py',
+  testFile,
   oldSelector,
   newSelector,
 }: DiffViewerProps) {
   const [copied, setCopied] = useState(false);
 
-  const fileName = testFile.split(/[/\\]/).pop() || 'test.py';
-  const fallbackDiff =
+  // If there's no diff and no selectors provided, show authentic clean empty state
+  if (!diff && !oldSelector && !newSelector) {
+    return (
+      <div className="glass-panel rounded-2xl border border-surface-border p-8 text-center space-y-3 bg-[#0B0D14]/80">
+        <div className="w-10 h-10 rounded-xl bg-surface-light border border-white/[0.08] flex items-center justify-center text-gray-500 mx-auto">
+          <FileCode className="w-5 h-5" />
+        </div>
+        <div className="space-y-1">
+          <p className="text-xs font-mono font-bold text-gray-300">No Active AST Patch</p>
+          <p className="text-[11px] font-sans text-gray-500 max-w-sm mx-auto">
+            Test selectors are intact. When KernHell repairs a broken locator during test execution, the surgical LibCST code diff will stream here.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const fileName = testFile ? testFile.split(/[/\\]/).pop() || 'test.py' : 'test.py';
+  const effectiveDiff =
     diff ||
     `--- a/${fileName}
 +++ b/${fileName}
-@@ -14,3 +14,3 @@
-     # Step 2: click the purchase action (needs to be healed)
--    page.click("${oldSelector || '#buy-now'}")  # inline comment here
-+    page.click("${newSelector || "page.get_by_role('button', name='Place Your Order')"}")  # inline comment here`;
+@@ -1,3 +1,3 @@
+-    page.click("${oldSelector || ''}")
++    page.click("${newSelector || ''}")`;
 
   const copyToClipboard = () => {
-    navigator.clipboard.writeText(fallbackDiff);
+    navigator.clipboard.writeText(effectiveDiff);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const lines = fallbackDiff.split('\n');
+  const lines = effectiveDiff.split('\n');
 
   return (
     <div className="glass-panel rounded-2xl border border-surface-border overflow-hidden">

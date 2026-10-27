@@ -7,7 +7,7 @@ import { History, Filter, FileText, CheckCircle, ShieldAlert, Layers } from 'luc
 
 export default function HistoryPage() {
   const [history, setHistory] = useState<HistoryRun[]>(DEFAULT_HISTORY);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [filterMode, setFilterMode] = useState<'all' | 'healed' | 'guarded'>('all');
 
   useEffect(() => {

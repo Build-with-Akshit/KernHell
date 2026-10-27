@@ -10,7 +10,7 @@ export default function Navbar() {
 
   const navItems = [
     { name: 'Overview', href: '/', icon: LayoutDashboard },
-    { name: 'Live Playground', href: '/playground', icon: Play, badge: 'AI Live' },
+    { name: 'Live Playground', href: '/playground', icon: Play },
     { name: 'Semantic Memory', href: '/cache', icon: Database },
     { name: 'Run History', href: '/history', icon: History },
   ];

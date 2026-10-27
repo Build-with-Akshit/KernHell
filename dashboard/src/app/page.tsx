@@ -31,7 +31,7 @@ import {
 export default function OverviewPage() {
   const [stats, setStats] = useState<SystemStats>(DEFAULT_STATS);
   const [history, setHistory] = useState<HistoryRun[]>(DEFAULT_HISTORY);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const [selectedRunIndex, setSelectedRunIndex] = useState<number>(0);
   const [showPipeline, setShowPipeline] = useState<boolean>(true);
@@ -124,7 +124,7 @@ export default function OverviewPage() {
               className="text-xs font-mono text-brand-cyan hover:underline flex items-center space-x-1"
             >
               <span>View All History</span>
-              <ArrowRight className="w-3 h-3" />
+              <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
 
@@ -144,11 +144,11 @@ export default function OverviewPage() {
           </h2>
 
           <DiffViewer
-            title={activeRun ? `AST Patch: ${activeRun.test_file.split(/[/\\]/).pop()}` : 'Featured Surgical AST Patch'}
-            testFile={activeRun?.test_file || 'tests/test_checkout_flow.py'}
+            title={activeRun ? `AST Patch: ${activeRun.test_file.split(/[/\\]/).pop()}` : 'Surgical AST Patch'}
+            testFile={activeRun?.test_file}
             diff={activeRun?.diff}
-            oldSelector={activeRun?.results?.[0]?.broken_selector || '#buy-now'}
-            newSelector={activeRun?.results?.[0]?.healed_selector || "page.get_by_role('button', name='Place Your Order')"}
+            oldSelector={activeRun?.results?.[0]?.broken_selector}
+            newSelector={activeRun?.results?.[0]?.healed_selector}
           />
 
           <div className="rounded-2xl p-4 border border-white/[0.08] bg-[#0B0D14]/80 text-xs space-y-2 font-sans shadow-inner">
