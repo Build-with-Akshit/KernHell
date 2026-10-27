@@ -13,7 +13,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from kernhell.core.config import KernHellConfig, load_config
+from kernhell.core.config import KernHellConfig, _find_config_file, load_config
 
 console = Console(stderr=True)
 
@@ -21,7 +21,7 @@ PROVIDER_DETAILS = {
     "1": {
         "name": "Google Gemini",
         "provider": "gemini",
-        "default_model": "gemini-3.5-flash",
+        "default_model": "gemini-1.5-flash",
         "env_var": "GEMINI_API_KEY",
         "key_hint": "Free key available at: https://aistudio.google.com/app/apikey",
         "badge": "[bold green]Recommended • Free tier • Fast[/bold green]",
@@ -136,14 +136,15 @@ def run_setup_wizard() -> KernHellConfig:
                 api_key = existing_key
 
         if not api_key:
-            api_key = typer.prompt(
-                f"Enter your {env_var} (Press Enter to skip)",
-                hide_input=True,
-                default="",
-            ).strip()
-            if not api_key:
+            while True:
+                api_key = typer.prompt(
+                    f"Enter your {env_var}",
+                    hide_input=True,
+                ).strip()
+                if api_key:
+                    break
                 console.print(
-                    "[dim yellow]Notice: No API key entered. KernHell will use Emergency DOM Heuristic Fallback until configured.[/dim yellow]"
+                    f"[bold red]Error: {env_var} is required. Please enter a valid API key.[/bold red]"
                 )
 
         change_model = typer.confirm(f"Use default model '{model}'?", default=True)
@@ -210,6 +211,13 @@ def run_setup_wizard() -> KernHellConfig:
 
     global_config_file.write_text(toml_content, encoding="utf-8")
 
+    # If an active local project config file exists (e.g. ./.kernhellrc.toml), update it too (skip in test runner)
+    active_local_config = None
+    if not os.environ.get("PYTEST_CURRENT_TEST"):
+        active_local_config = _find_config_file()
+        if active_local_config and active_local_config.resolve() != global_config_file.resolve():
+            active_local_config.write_text(toml_content, encoding="utf-8")
+
     # Write marker that setup has been completed
     setup_marker = global_dir / ".setup_done"
     setup_marker.write_text(f"{provider}:{model}\n", encoding="utf-8")
@@ -220,9 +228,11 @@ def run_setup_wizard() -> KernHellConfig:
     summary_table.add_column("Configured Value", style="white")
     summary_table.add_row(
         "API Key",
-        "Set (Masked)" if api_key else "[dim]Not Required (Local Ollama)[/dim]" if provider == "ollama" else "[yellow]Not set (Emergency DOM Heuristic fallback active)[/yellow]",
+        "Set (Masked)" if api_key else "[dim]Not Required (Local Ollama)[/dim]",
     )
     summary_table.add_row("Global Config", str(global_config_file))
+    if active_local_config and active_local_config.resolve() != global_config_file.resolve():
+        summary_table.add_row("Local Config", str(active_local_config))
 
     console.print(
         Panel(

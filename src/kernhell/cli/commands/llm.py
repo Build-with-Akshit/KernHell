@@ -13,7 +13,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 from kernhell.cli.commands.setup import PROVIDER_ALIASES, PROVIDER_DETAILS, run_setup_wizard
-from kernhell.core.config import load_config
+from kernhell.core.config import _find_config_file, load_config
 
 console = Console(stderr=True)
 
@@ -60,6 +60,10 @@ def show_llm_status() -> None:
         table.add_row("API Base URL", cfg.llm.api_base)
     table.add_row("Temperature", str(cfg.llm.temperature))
     table.add_row("Max Tokens", str(cfg.llm.max_tokens))
+
+    active_config = _find_config_file()
+    if active_config:
+        table.add_row("Config Source", str(active_config))
 
     console.print()
     console.print(table)
@@ -122,7 +126,11 @@ def set_llm(
         if existing:
             final_key = existing
         elif final_provider != "ollama":
-            final_key = typer.prompt(f"Enter your {env_var} (Press Enter to skip)", hide_input=True, default="").strip()
+            while True:
+                final_key = typer.prompt(f"Enter your {env_var}", hide_input=True).strip()
+                if final_key:
+                    break
+                console.print(f"[bold red]Error: {env_var} is required. Please enter a valid API key.[/bold red]")
 
     # Save to ~/.kernhell/.env
     global_dir = Path.home() / ".kernhell"
@@ -179,6 +187,13 @@ def set_llm(
         "",
     ])
     global_config_file.write_text("\n".join(toml_lines), encoding="utf-8")
+
+    # If an active local project config file exists (e.g. ./.kernhellrc.toml), update it too (skip in test runner)
+    active_local_config = None
+    if not os.environ.get("PYTEST_CURRENT_TEST"):
+        active_local_config = _find_config_file()
+        if active_local_config and active_local_config.resolve() != global_config_file.resolve():
+            active_local_config.write_text("\n".join(toml_lines), encoding="utf-8")
 
     # Touch setup marker
     (global_dir / ".setup_done").write_text(f"{final_provider}:{final_model}\n", encoding="utf-8")

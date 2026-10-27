@@ -78,8 +78,7 @@ class MinimalCLIProcessor:
 
         elif event == "patcher.start":
             file_name = Path(str(event_dict.get("file", ""))).name or "test"
-            l = event_dict.get("line", "")
-            line = f"  [dim]›[/dim] Applying surgical AST patch to [white]{file_name}[/white] (line {l})..."
+            line = f"  [dim]›[/dim] Applying surgical AST patch to [white]{file_name}[/white]..."
 
         elif event == "patcher.complete":
             line = f"  [dim]›[/dim] AST patch applied successfully"
@@ -96,8 +95,11 @@ class MinimalCLIProcessor:
         elif event == "orchestrator.cache_fix_verification_failed.proceeding_to_ai":
             line = f"  [dim]›[/dim] [dim yellow]Cache suggestion failed live verification — escalating to Healer...[/dim yellow]"
 
-        elif "llm_call_failed" in str(event):
+        elif event == "healer.llm_call_failed.falling_back_to_heuristic":
             line = f"  [dim]›[/dim] [dim yellow]LLM call unavailable/timed out — falling back to heuristic healer...[/dim yellow]"
+
+        elif event == "analyzer.llm_call_failed.falling_back_to_heuristic":
+            line = None
 
         elif "no_api_key" in str(event):
             line = f"  [dim]›[/dim] [dim]No LLM API key configured — using smart heuristic DOM healer...[/dim]"

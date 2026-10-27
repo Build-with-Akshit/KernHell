@@ -34,7 +34,7 @@ class EnterpriseClusterPage(BasePage):
         self.cluster_tiers_section = page.locator("section#compute-tiers")
 
         # Intentionally broken selector (legacy CTA before redesign)
-        self.confirm_deployment_button = page.locator('role=button[name="Confirm & Deploy Cluster"]')
+        self.confirm_deployment_button = page.locator('[data-testid="complete-enterprise-order-action"]')
 
     def fill_organization_credentials(self, org_name: str, email: str) -> None:
         """Populates organization details and admin email."""

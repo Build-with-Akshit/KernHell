@@ -1,12 +1,12 @@
-# KernHell Default Configuration
-# Override by placing a copy at ~/.kernhellrc.toml or ./.kernhellrc.toml
+# KernHell Engine Configuration
+# Generated via `kernhell setup`
 
 [llm]
-provider = "gemini"                       # gemini | groq | openai | anthropic | ollama
-model = "gemini-3.5-flash"                # gemini-3.5-flash | gemini-3.8-flash | gpt-4o-mini
+provider = "ollama"
+model = "ollama/llama3.2"
+api_base = "http://localhost:11434"
 temperature = 0.1
 max_tokens = 2048
-# api_key = ""                            # Optional: can also be set via GEMINI_API_KEY in .env
 
 [healing]
 confidence_threshold = 0.85
@@ -21,11 +21,11 @@ cache_dir = "~/.kernhell/cache"
 embedding_model = "all-MiniLM-L6-v2"
 
 [scanner]
-timeout_ms = 5000
+timeout_ms = 30000
 capture_screenshot = true
-browser = "chromium"                    # chromium | firefox | webkit
+browser = "chromium"
 headless = true
 
 [logging]
-level = "INFO"                          # DEBUG | INFO | WARNING | ERROR
-json_output = false                     # true for CI environments
+level = "INFO"
+json_output = false
