@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "kernhell"
-version = "0.1.6"
+version = "0.1.7"
 description = "AI-Powered Autonomous Self-Healing Testing Engine — The Heart of Your System Where Innovation Meets Precision"
 readme = "README.md"
 license = "MIT"
