@@ -12,7 +12,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from kernhell.cli.commands.setup import PROVIDER_DETAILS, run_setup_wizard
+from kernhell.cli.commands.setup import PROVIDER_ALIASES, PROVIDER_DETAILS, run_setup_wizard
 from kernhell.core.config import load_config
 
 console = Console(stderr=True)
@@ -22,18 +22,6 @@ llm_app = typer.Typer(
     help="Inspect, set, and switch AI / LLM providers (Gemini, OpenAI, Claude, Groq, Ollama).",
     no_args_is_help=False,
 )
-
-PROVIDER_ALIASES = {
-    "gemini": "1",
-    "google": "1",
-    "openai": "2",
-    "chatgpt": "2",
-    "gpt": "2",
-    "anthropic": "3",
-    "claude": "3",
-    "groq": "4",
-    "ollama": "5",
-}
 
 
 @llm_app.callback(invoke_without_command=True)

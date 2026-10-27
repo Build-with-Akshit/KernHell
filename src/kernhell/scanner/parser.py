@@ -76,6 +76,36 @@ _GET_BY_PLACEHOLDER_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+# Matches Playwright Call log / waiting-for explicit failure actions (highest priority)
+_WAITING_FOR_ROLE_PATTERN = re.compile(
+    r"""waiting\s+for\s+(?:locator\(\s*)?(?:page\.)?(?:get_by_role|getByRole)\(\s*["'](\w+)["'](?:\s*,\s*(?:\{\s*name:\s*|name\s*=\s*)["']([^"']+)["']\s*\}?)?\s*\)""",
+    re.IGNORECASE,
+)
+_WAITING_FOR_TEXT_PATTERN = re.compile(
+    r"""waiting\s+for\s+(?:locator\(\s*)?(?:page\.)?(?:get_by_text|getByText)\(\s*["'](.+?)["']\s*\)""",
+    re.IGNORECASE,
+)
+_WAITING_FOR_TESTID_PATTERN = re.compile(
+    r"""waiting\s+for\s+(?:locator\(\s*)?(?:page\.)?(?:get_by_test_id|getByTestId)\(\s*["'](.+?)["']\s*\)""",
+    re.IGNORECASE,
+)
+_WAITING_FOR_LABEL_PATTERN = re.compile(
+    r"""waiting\s+for\s+(?:locator\(\s*)?(?:page\.)?(?:get_by_label|getByLabel)\(\s*["'](.+?)["']\s*\)""",
+    re.IGNORECASE,
+)
+_WAITING_FOR_PLACEHOLDER_PATTERN = re.compile(
+    r"""waiting\s+for\s+(?:locator\(\s*)?(?:page\.)?(?:get_by_placeholder|getByPlaceholder)\(\s*["'](.+?)["']\s*\)""",
+    re.IGNORECASE,
+)
+_WAITING_FOR_LOCATOR_PATTERN = re.compile(
+    r"""waiting\s+for\s+(?:locator\(\s*(?:(["'`])(.*?)\1|([^\)\n]+))\s*\)|selector\s+(["'`])(.*?)\4)""",
+    re.IGNORECASE,
+)
+_STRICT_MODE_LOCATOR_PATTERN = re.compile(
+    r"""strict\s+mode\s+violation:\s*(?:locator\(\s*(?:(["'`])(.*?)\1|([^\)\n]+))\s*\)|selector\s+(["'`])(.*?)\4|(?:(["'`])(.*?)\6))""",
+    re.IGNORECASE,
+)
+
 # Matches pytest and Playwright TS location lines
 _LOCATION_PATTERN = re.compile(
     r"^(.+\.(?:py|ts|js|tsx|jsx)):(\d+):(?:\d+:)?\s*(TimeoutError|Error|AssertionError)?",
@@ -167,8 +197,64 @@ def _extract_selector(text: str, is_ts: bool = False) -> tuple[str, SelectorType
     Tries multiple patterns in priority order and returns the first match.
     Uses camelCase for TypeScript/JavaScript and snake_case for Python.
     """
+    # 1. High-priority explicit Playwright failure actions ("waiting for ...")
+    m = _WAITING_FOR_ROLE_PATTERN.search(text)
+    if m:
+        role = m.group(1)
+        name = m.group(2) or ""
+        if is_ts:
+            selector = f'getByRole("{role}", {{ name: "{name}" }})' if name else f'getByRole("{role}")'
+        else:
+            selector = f'get_by_role("{role}", name="{name}")' if name else f'get_by_role("{role}")'
+        return selector, SelectorType.ROLE
+
+    m = _WAITING_FOR_TEXT_PATTERN.search(text)
+    if m:
+        prefix = "getByText" if is_ts else "get_by_text"
+        return f'{prefix}("{m.group(1)}")', SelectorType.TEXT
+
+    m = _WAITING_FOR_TESTID_PATTERN.search(text)
+    if m:
+        prefix = "getByTestId" if is_ts else "get_by_test_id"
+        return f'{prefix}("{m.group(1)}")', SelectorType.TEST_ID
+
+    m = _WAITING_FOR_LABEL_PATTERN.search(text)
+    if m:
+        prefix = "getByLabel" if is_ts else "get_by_label"
+        return f'{prefix}("{m.group(1)}")', SelectorType.LABEL
+
+    m = _WAITING_FOR_PLACEHOLDER_PATTERN.search(text)
+    if m:
+        prefix = "getByPlaceholder" if is_ts else "get_by_placeholder"
+        return f'{prefix}("{m.group(1)}")', SelectorType.PLACEHOLDER
+
+    m = _WAITING_FOR_LOCATOR_PATTERN.search(text)
+    if m:
+        raw_sel = m.group(2) or m.group(3) or m.group(5)
+        sel = _clean_extracted_selector(raw_sel or "")
+        return sel, classify_selector(sel)
+
+    # 2. Strict mode violation
+    m = _STRICT_MODE_LOCATOR_PATTERN.search(text)
+    if m:
+        raw_sel = m.group(2) or m.group(3) or m.group(5) or m.group(7)
+        sel = _clean_extracted_selector(raw_sel or "")
+        return sel, classify_selector(sel)
+
+    # 3. Clean fallback: filter out internal Playwright implementation lines/frames
+    clean_lines = [
+        line
+        for line in text.splitlines()
+        if "site-packages" not in line
+        and "playwright/_impl" not in line
+        and "playwright\\_impl" not in line
+        and "playwright/sync_api" not in line
+        and "playwright\\sync_api" not in line
+    ]
+    target_text = "\n".join(clean_lines) if clean_lines else text
+
     # Try get_by_role / getByRole first (most semantic)
-    m = _GET_BY_ROLE_PATTERN.search(text)
+    m = _GET_BY_ROLE_PATTERN.search(target_text)
     if m:
         role = m.group(1)
         name = m.group(2) or ""
@@ -179,38 +265,38 @@ def _extract_selector(text: str, is_ts: bool = False) -> tuple[str, SelectorType
         return selector, SelectorType.ROLE
 
     # get_by_text / getByText
-    m = _GET_BY_TEXT_PATTERN.search(text)
+    m = _GET_BY_TEXT_PATTERN.search(target_text)
     if m:
         prefix = "getByText" if is_ts else "get_by_text"
         return f'{prefix}("{m.group(1)}")', SelectorType.TEXT
 
     # get_by_test_id / getByTestId
-    m = _GET_BY_TESTID_PATTERN.search(text)
+    m = _GET_BY_TESTID_PATTERN.search(target_text)
     if m:
         prefix = "getByTestId" if is_ts else "get_by_test_id"
         return f'{prefix}("{m.group(1)}")', SelectorType.TEST_ID
 
     # get_by_label / getByLabel
-    m = _GET_BY_LABEL_PATTERN.search(text)
+    m = _GET_BY_LABEL_PATTERN.search(target_text)
     if m:
         prefix = "getByLabel" if is_ts else "get_by_label"
         return f'{prefix}("{m.group(1)}")', SelectorType.LABEL
 
     # get_by_placeholder / getByPlaceholder
-    m = _GET_BY_PLACEHOLDER_PATTERN.search(text)
+    m = _GET_BY_PLACEHOLDER_PATTERN.search(target_text)
     if m:
         prefix = "getByPlaceholder" if is_ts else "get_by_placeholder"
         return f'{prefix}("{m.group(1)}")', SelectorType.PLACEHOLDER
 
     # locator("selector")
-    m = _LOCATOR_PATTERN.search(text)
+    m = _LOCATOR_PATTERN.search(target_text)
     if m:
         raw_sel = m.group(2) if m.group(2) is not None else m.group(3)
         sel = _clean_extracted_selector(raw_sel or "")
         return sel, classify_selector(sel)
 
     # page.click("selector") etc.
-    m = _PAGE_ACTION_PATTERN.search(text)
+    m = _PAGE_ACTION_PATTERN.search(target_text)
     if m:
         sel = _clean_extracted_selector(m.group(2))
         return sel, classify_selector(sel)

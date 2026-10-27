@@ -132,3 +132,33 @@ def test_cli_switch_llm_alias() -> None:
     assert result.exit_code == 0
     assert "switch" in result.output.lower()
 
+
+def test_setup_wizard_invalid_choice_retry(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+    monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+
+    # First '9' (out of range), then 'invalid' (non-numeric), then '1' (Gemini), empty key, default model
+    inputs = "9\ninvalid\n1\n\nY\n"
+    result = runner.invoke(app, ["setup"], input=inputs)
+    assert result.exit_code == 0
+    assert "Invalid choice '9'" in result.output
+    assert "Invalid choice 'invalid'" in result.output
+
+    config_file = tmp_path / ".kernhell" / ".kernhellrc.toml"
+    assert config_file.exists()
+    assert 'provider = "gemini"' in config_file.read_text(encoding="utf-8")
+
+
+def test_setup_wizard_provider_name_input(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+
+    # Types "ollama" by text instead of "5", model name "llama3.2", base URL default
+    inputs = "ollama\nllama3.2\nhttp://localhost:11434\n"
+    result = runner.invoke(app, ["setup"], input=inputs)
+    assert result.exit_code == 0
+
+    config_file = tmp_path / ".kernhell" / ".kernhellrc.toml"
+    assert config_file.exists()
+    assert 'provider = "ollama"' in config_file.read_text(encoding="utf-8")
+
+

@@ -144,3 +144,32 @@ def test_parse_playwright_typescript_expect_codeframe(tmp_path: Path) -> None:
     assert failures[0].line_number == 2
 
 
+def test_parse_playwright_internal_traceback_canvas_prevention(tmp_path: Path) -> None:
+    py_file = tmp_path / "test_cluster.py"
+    py_file.write_text("def test_cluster():\n    cluster_page.trigger()\n", encoding="utf-8")
+
+    real_pytest_output = """
+    cluster_page.trigger_cluster_provisioning()
+test_cluster.py:47: in trigger_cluster_provisioning
+    self.confirm_deployment_button.click()
+..\\site-packages\\playwright\\sync_api\\_generated.py:11021: in click
+    self._sync(
+..\\site-packages\\playwright\\_impl\\_locator.py:174: in click
+    return await self._frame._click(self._selector, strict=True, **params)
+        ```py
+        page.locator("canvas").click(
+            button="right", modifiers=["Shift"]
+        )
+        ```
+..\\site-packages\\playwright\\_impl\\_connection.py:636: TimeoutError
+E           playwright._impl._errors.TimeoutError: Locator.click: Timeout 30000ms exceeded.
+E           Call log:
+E             - waiting for locator("button.legacy-place-order-cta")
+    """
+    failures = parse_playwright_errors(real_pytest_output, py_file)
+    assert len(failures) == 1
+    assert failures[0].broken_selector == "button.legacy-place-order-cta"
+    assert failures[0].selector_type == SelectorType.CSS
+
+
+

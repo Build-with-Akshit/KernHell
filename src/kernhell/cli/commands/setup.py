@@ -60,6 +60,18 @@ PROVIDER_DETAILS = {
     },
 }
 
+PROVIDER_ALIASES = {
+    "gemini": "1",
+    "google": "1",
+    "openai": "2",
+    "chatgpt": "2",
+    "gpt": "2",
+    "anthropic": "3",
+    "claude": "3",
+    "groq": "4",
+    "ollama": "5",
+}
+
 
 def run_setup_wizard() -> KernHellConfig:
     """Run the interactive LLM configuration wizard and save preferences."""
@@ -81,14 +93,23 @@ def run_setup_wizard() -> KernHellConfig:
         table.add_row(f"[{opt}]", info["name"], f"{info['badge']}\n[dim italic]{info['key_hint']}[/dim italic]")
 
     console.print(table)
-    choice = typer.prompt(
-        "Select your AI / LLM provider [1-5]",
-        default="1",
-        show_default=True,
-    ).strip()
 
-    if choice not in PROVIDER_DETAILS:
-        choice = "1"
+    while True:
+        choice = typer.prompt(
+            "Select your AI / LLM provider [1-5]",
+            default="1",
+            show_default=True,
+        ).strip().lower()
+
+        if choice in PROVIDER_DETAILS:
+            break
+        if choice in PROVIDER_ALIASES:
+            choice = PROVIDER_ALIASES[choice]
+            break
+
+        console.print(
+            f"[bold red]✖ Invalid choice '{choice}'. Please select a valid option between 1 and 5.[/bold red]"
+        )
 
     selected = PROVIDER_DETAILS[choice]
     provider = selected["provider"]

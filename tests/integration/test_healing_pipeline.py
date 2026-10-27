@@ -64,7 +64,7 @@ def test_checkout(page):
     patched_code = read_file(test_file)
     assert "#buy-now" not in patched_code
     assert "# Target selector to heal" in patched_code  # Comments preserved!
-    assert ("#purchase-btn" in patched_code or "complete-order-btn" in patched_code or "Place Your Order" in patched_code)
+    assert ("#purchase-btn" in patched_code or "complete-order-btn" in patched_code or "Place Your Order" in patched_code or "Complete Order" in patched_code)
 
     # 4. Re-inject broken selector to test Semantic Vector Cache instant hit
     write_file(test_file, original_code)

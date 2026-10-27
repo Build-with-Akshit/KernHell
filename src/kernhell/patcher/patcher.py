@@ -292,76 +292,98 @@ class SurgicalPatcher:
                 line,
             )
             if m_role:
-                prefix = m_role.group(1)
-                fn_name = m_role.group(2)
-                new_role, new_name = _extract_role_parts(new_sel)
-                if new_role:
-                    if "getByRole" in fn_name:
-                        replacement = (
-                            f'{prefix}getByRole("{new_role}", {{ name: "{new_name}" }})'
-                            if new_name
-                            else f'{prefix}getByRole("{new_role}")'
-                        )
+                cur_role = m_role.group(4)
+                cur_name = m_role.group(6)
+                old_role, old_name = _extract_role_parts(old_sel)
+                role_matches = False
+                if old_role and old_role.lower() == cur_role.lower():
+                    if not old_name or not cur_name or old_name.lower() in cur_name.lower():
+                        role_matches = True
+                elif cur_name and cur_name in old_sel:
+                    role_matches = True
+                elif "role=" in old_sel.lower() or "getbyrole" in old_sel.lower() or "get_by_role" in old_sel.lower():
+                    role_matches = True
+
+                if role_matches:
+                    prefix = m_role.group(1)
+                    fn_name = m_role.group(2)
+                    new_role, new_name = _extract_role_parts(new_sel)
+                    if new_role:
+                        if "getByRole" in fn_name:
+                            replacement = (
+                                f'{prefix}getByRole("{new_role}", {{ name: "{new_name}" }})'
+                                if new_name
+                                else f'{prefix}getByRole("{new_role}")'
+                            )
+                        else:
+                            replacement = (
+                                f'{prefix}get_by_role("{new_role}", name="{new_name}")'
+                                if new_name
+                                else f'{prefix}get_by_role("{new_role}")'
+                            )
+                        return line.replace(m_role.group(0), replacement), True
                     else:
-                        replacement = (
-                            f'{prefix}get_by_role("{new_role}", name="{new_name}")'
-                            if new_name
-                            else f'{prefix}get_by_role("{new_role}")'
-                        )
-                    return line.replace(m_role.group(0), replacement), True
-                else:
-                    safe_new = new_sel.strip("'\"")
-                    q = "'" if '"' in safe_new else '"'
-                    replacement = f"{prefix}locator({q}{safe_new}{q})"
-                    return line.replace(m_role.group(0), replacement), True
+                        safe_new = new_sel.strip("'\"")
+                        q = "'" if '"' in safe_new else '"'
+                        replacement = f"{prefix}locator({q}{safe_new}{q})"
+                        return line.replace(m_role.group(0), replacement), True
 
             # 3. getByText / get_by_text
             m_text = re.search(r"""((?:[\w.]+\.)?)(getByText|get_by_text)\(\s*(["'`])(.+?)\3\s*\)""", line)
             if m_text:
-                prefix = m_text.group(1)
-                fn_name = m_text.group(2)
-                quote = m_text.group(3)
-                new_text = _extract_text_value(new_sel)
-                if new_text:
-                    replacement = f"{prefix}{fn_name}({quote}{new_text}{quote})"
-                    return line.replace(m_text.group(0), replacement), True
-                else:
-                    safe_new = new_sel.strip("'\"")
-                    q = quote if quote in ("'", '"') and quote not in safe_new else ("'" if '"' in safe_new else '"')
-                    replacement = f"{prefix}locator({q}{safe_new}{q})"
-                    return line.replace(m_text.group(0), replacement), True
+                cur_text = m_text.group(4)
+                old_text = _extract_text_value(old_sel) or old_sel.strip("'\"")
+                if old_text == cur_text or cur_text in old_sel or "text=" in old_sel.lower() or "getbytext" in old_sel.lower() or "get_by_text" in old_sel.lower():
+                    prefix = m_text.group(1)
+                    fn_name = m_text.group(2)
+                    quote = m_text.group(3)
+                    new_text = _extract_text_value(new_sel)
+                    if new_text:
+                        replacement = f"{prefix}{fn_name}({quote}{new_text}{quote})"
+                        return line.replace(m_text.group(0), replacement), True
+                    else:
+                        safe_new = new_sel.strip("'\"")
+                        q = quote if quote in ("'", '"') and quote not in safe_new else ("'" if '"' in safe_new else '"')
+                        replacement = f"{prefix}locator({q}{safe_new}{q})"
+                        return line.replace(m_text.group(0), replacement), True
 
             # 4. getByPlaceholder / get_by_placeholder
             m_ph = re.search(r"""((?:[\w.]+\.)?)(getByPlaceholder|get_by_placeholder)\(\s*(["'`])(.+?)\3\s*\)""", line)
             if m_ph:
-                prefix = m_ph.group(1)
-                fn_name = m_ph.group(2)
-                quote = m_ph.group(3)
-                new_ph = _extract_placeholder_value(new_sel)
-                if new_ph:
-                    replacement = f"{prefix}{fn_name}({quote}{new_ph}{quote})"
-                    return line.replace(m_ph.group(0), replacement), True
-                else:
-                    safe_new = new_sel.strip("'\"")
-                    q = quote if quote in ("'", '"') and quote not in safe_new else ("'" if '"' in safe_new else '"')
-                    replacement = f"{prefix}locator({q}{safe_new}{q})"
-                    return line.replace(m_ph.group(0), replacement), True
+                cur_ph = m_ph.group(4)
+                old_ph = _extract_placeholder_value(old_sel) or old_sel.strip("'\"")
+                if old_ph == cur_ph or cur_ph in old_sel or "placeholder" in old_sel.lower():
+                    prefix = m_ph.group(1)
+                    fn_name = m_ph.group(2)
+                    quote = m_ph.group(3)
+                    new_ph = _extract_placeholder_value(new_sel)
+                    if new_ph:
+                        replacement = f"{prefix}{fn_name}({quote}{new_ph}{quote})"
+                        return line.replace(m_ph.group(0), replacement), True
+                    else:
+                        safe_new = new_sel.strip("'\"")
+                        q = quote if quote in ("'", '"') and quote not in safe_new else ("'" if '"' in safe_new else '"')
+                        replacement = f"{prefix}locator({q}{safe_new}{q})"
+                        return line.replace(m_ph.group(0), replacement), True
 
             # 5. getByLabel / get_by_label
             m_lbl = re.search(r"""((?:[\w.]+\.)?)(getByLabel|get_by_label)\(\s*(["'`])(.+?)\3\s*\)""", line)
             if m_lbl:
-                prefix = m_lbl.group(1)
-                fn_name = m_lbl.group(2)
-                quote = m_lbl.group(3)
-                new_lbl = _extract_label_value(new_sel)
-                if new_lbl:
-                    replacement = f"{prefix}{fn_name}({quote}{new_lbl}{quote})"
-                    return line.replace(m_lbl.group(0), replacement), True
-                else:
-                    safe_new = new_sel.strip("'\"")
-                    q = quote if quote in ("'", '"') and quote not in safe_new else ("'" if '"' in safe_new else '"')
-                    replacement = f"{prefix}locator({q}{safe_new}{q})"
-                    return line.replace(m_lbl.group(0), replacement), True
+                cur_lbl = m_lbl.group(4)
+                old_lbl = _extract_label_value(old_sel) or old_sel.strip("'\"")
+                if old_lbl == cur_lbl or cur_lbl in old_sel or "label" in old_sel.lower():
+                    prefix = m_lbl.group(1)
+                    fn_name = m_lbl.group(2)
+                    quote = m_lbl.group(3)
+                    new_lbl = _extract_label_value(new_sel)
+                    if new_lbl:
+                        replacement = f"{prefix}{fn_name}({quote}{new_lbl}{quote})"
+                        return line.replace(m_lbl.group(0), replacement), True
+                    else:
+                        safe_new = new_sel.strip("'\"")
+                        q = quote if quote in ("'", '"') and quote not in safe_new else ("'" if '"' in safe_new else '"')
+                        replacement = f"{prefix}locator({q}{safe_new}{q})"
+                        return line.replace(m_lbl.group(0), replacement), True
 
             # 6. Standard quoted selector replacement
             # Double-quoted selector
