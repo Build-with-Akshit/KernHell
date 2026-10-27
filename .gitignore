@@ -62,6 +62,7 @@ dmypy.json
 .kernhell_*.tmp
 
 # Scratch & Temporary Testing Files
+scratch/
 test_demo.py
 test_demo.spec.ts
 test_e2e_demo.py
