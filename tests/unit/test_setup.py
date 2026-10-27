@@ -46,15 +46,15 @@ def test_setup_wizard_ollama_provider(tmp_path: Path, monkeypatch) -> None:
     assert 'model = "ollama/llama3.2"' in content
 
 
-def test_setup_wizard_skip_api_key(tmp_path: Path, monkeypatch) -> None:
+def test_setup_wizard_api_key_required_retry(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
 
-    # Choice '1' (Gemini), empty API Key (skipped), Use default model (Y)
-    inputs = "1\n\nY\n"
-    with patch("rich.console.Console.print"):
-        result = runner.invoke(app, ["setup"], input=inputs)
-        assert result.exit_code == 0
+    # Choice '1' (Gemini), empty API Key (rejected), then valid key, Use default model (Y)
+    inputs = "1\n\nAIzaSyTestKey123\nY\n"
+    result = runner.invoke(app, ["setup"], input=inputs)
+    assert result.exit_code == 0
+    assert "GEMINI_API_KEY" in result.output
 
     config_file = tmp_path / ".kernhell" / ".kernhellrc.toml"
     assert config_file.exists()
@@ -80,7 +80,7 @@ def test_setup_wizard_gemini_provider(tmp_path: Path, monkeypatch) -> None:
     assert config_file.exists()
     content = config_file.read_text(encoding="utf-8")
     assert 'provider = "gemini"' in content
-    assert 'model = "gemini-3.5-flash"' in content
+    assert 'model = "gemini-1.5-flash"' in content
 
 
 def test_check_first_run_setup_skips_when_configured(tmp_path: Path, monkeypatch) -> None:
@@ -137,8 +137,8 @@ def test_setup_wizard_invalid_choice_retry(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(Path, "home", lambda: tmp_path)
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
 
-    # First '9' (out of range), then 'invalid' (non-numeric), then '1' (Gemini), empty key, default model
-    inputs = "9\ninvalid\n1\n\nY\n"
+    # First '9' (out of range), then 'invalid' (non-numeric), then '1' (Gemini), valid key, default model
+    inputs = "9\ninvalid\n1\nAIzaSyTestKey123\nY\n"
     result = runner.invoke(app, ["setup"], input=inputs)
     assert result.exit_code == 0
     assert "Invalid choice '9'" in result.output

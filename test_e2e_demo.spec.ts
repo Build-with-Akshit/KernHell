@@ -1,128 +1,195 @@
 import { test, expect, Page, Locator } from '@playwright/test';
 
 /**
- * Enterprise Billing Types & Interfaces
+ * Enterprise Payment Types & Interfaces
  */
-export interface OrganizationSubscription {
-  orgId: string;
-  currentPlan: 'starter' | 'pro' | 'enterprise';
-  billingCycle: 'monthly' | 'annual';
+export interface PaymentDetails {
+  cardHolder: string;
+  cardNumber: string;
+  expiry: string;
+  cvv: string;
+  amount: number;
 }
 
 /**
- * Page Object Model (POM) for Enterprise Billing Dashboard
+ * Page Object Model (POM) for Checkout & Payment Processing
  */
-export class BillingDashboardPage {
+export class PaymentCheckoutPage {
   readonly page: Page;
-  readonly plansSection: Locator;
-  readonly upgradeButton: Locator;
+  readonly cardHolderInput: Locator;
+  readonly cardNumberInput: Locator;
+  readonly expiryInput: Locator;
+  readonly cvvInput: Locator;
+  readonly payNowButton: Locator;
 
   constructor(page: Page) {
     this.page = page;
-    this.plansSection = page.locator('section#subscription-tiers');
+    this.cardHolderInput = page.locator('input#card-holder');
+    this.cardNumberInput = page.locator('input#card-number');
+    this.expiryInput = page.locator('input#card-expiry');
+    this.cvvInput = page.locator('input#card-cvv');
 
-    // Intentionally broken selector (legacy CTA before redesign)
-    this.upgradeButton = page.locator('[data-testid="complete-enterprise-upgrade-btn"]');
+    // Target button for checkout payment action
+    // TIP: To test KernHell self-healing, intentionally change this to a broken selector like:
+    // this.payNowButton = page.locator('button.old-pay-button');
+    this.payNowButton = page.locator('[data-testid="complete-payment-button"]');
   }
 
-  async selectEnterpriseTier(): Promise<void> {
-    // Triggers enterprise plan upgrade
-    await this.upgradeButton.click();
+  async fillPaymentForm(holder: string, cardNum: string): Promise<void> {
+    await this.cardHolderInput.fill(holder);
+    await this.cardNumberInput.fill(cardNum);
+  }
+
+  async submitPayment(): Promise<void> {
+    // Triggers payment transaction
+    await this.payNowButton.click();
   }
 }
 
-test.describe('Enterprise SaaS Billing & Checkout E2E Suite', () => {
+test.describe('Enterprise Payment & Checkout E2E Suite', () => {
   test.beforeEach(async ({ page }) => {
-    // Rich, realistic enterprise web page with Tailwind, SVGs, and refactored DOM
+    // Realistic enterprise dark-mode payment gateway web page
     await page.setContent(`<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Enterprise SaaS Billing & Subscriptions</title>
+  <title>CloudScale AI - Secure Checkout & Payment</title>
 </head>
-<body class="bg-slate-900 text-white font-sans">
-  <div id="__app_root" class="min-h-screen flex flex-col justify-between">
-    <header class="navbar flex items-center justify-between px-8 py-4 border-b border-slate-800 bg-slate-950/80 backdrop-blur">
-      <div class="logo font-black text-xl text-indigo-400">CloudScale AI</div>
-      <div class="user-badge flex items-center gap-2">
-        <span class="user-name text-slate-300 font-medium">Enterprise Admin</span>
-        <span class="status-indicator w-2 h-2 rounded-full bg-emerald-400"></span>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen">
+  <div id="checkout-root" class="max-w-4xl mx-auto px-6 py-12">
+    <!-- Navbar Header -->
+    <header class="flex items-center justify-between pb-6 border-b border-slate-800">
+      <div class="flex items-center gap-3">
+        <span class="text-2xl font-black text-indigo-400 tracking-tight">CloudScale AI</span>
+        <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">SSL 256-Bit Encrypted</span>
+      </div>
+      <div class="text-sm text-slate-400">
+        Order ID: <strong class="text-white font-mono">#ORD-99214</strong>
       </div>
     </header>
 
-    <main class="max-w-7xl mx-auto px-6 py-12 flex-1 w-full">
-      <div class="mb-10">
-        <h1 class="text-4xl font-extrabold tracking-tight">Subscription & License Tiers</h1>
-        <p class="text-slate-400 mt-2 text-lg">Scale autonomous compute clusters and AI test runners seamlessly.</p>
+    <main class="mt-10 grid grid-cols-1 md:grid-cols-3 gap-8">
+      <!-- Order Summary Card -->
+      <div class="md:col-span-1 bg-slate-900/60 p-6 rounded-2xl border border-slate-800 h-fit">
+        <h3 class="text-lg font-bold text-white mb-4">Order Summary</h3>
+        <div class="space-y-3 text-sm">
+          <div class="flex justify-between text-slate-400">
+            <span>AI Test Engine (Monthly)</span>
+            <span class="text-slate-200 font-semibold">$49.00</span>
+          </div>
+          <div class="flex justify-between text-slate-400">
+            <span>Cloud Cluster Runners</span>
+            <span class="text-slate-200 font-semibold">$0.00</span>
+          </div>
+          <div class="flex justify-between text-slate-400">
+            <span>Taxes & GST (18%)</span>
+            <span class="text-slate-200 font-semibold">$8.82</span>
+          </div>
+          <div class="pt-3 border-t border-slate-800 flex justify-between text-base font-bold text-white">
+            <span>Total Payable</span>
+            <span class="text-indigo-400">$57.82</span>
+          </div>
+        </div>
       </div>
 
-      <!-- Subscription Tiers Grid -->
-      <section id="subscription-tiers" class="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <!-- Starter Tier -->
-        <div class="tier-card p-8 rounded-2xl bg-slate-800/50 border border-slate-700/80 flex flex-col justify-between shadow-xl">
-          <div>
-            <h3 class="text-xl font-bold text-slate-200">Starter Dev</h3>
-            <p class="text-slate-400 text-sm mt-1">For single developers exploring test automation</p>
-            <p class="text-4xl font-black mt-6">$29 <span class="text-sm font-normal text-slate-400">/mo</span></p>
+      <!-- Payment Form Container -->
+      <div class="md:col-span-2 bg-slate-900/80 p-8 rounded-2xl border border-slate-800 shadow-xl">
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-2xl font-extrabold text-white">Payment Details</h2>
+          <div class="flex gap-2 text-xs font-semibold text-slate-400">
+            <span class="px-2 py-1 rounded bg-slate-800 border border-slate-700">Visa</span>
+            <span class="px-2 py-1 rounded bg-slate-800 border border-slate-700">Mastercard</span>
+            <span class="px-2 py-1 rounded bg-slate-800 border border-slate-700">UPI</span>
           </div>
-          <button class="mt-8 w-full py-3 rounded-xl bg-slate-700 text-slate-300 font-medium hover:bg-slate-600">Downgrade</button>
         </div>
 
-        <!-- Pro Tier -->
-        <div class="tier-card p-8 rounded-2xl bg-slate-800/50 border border-slate-700/80 flex flex-col justify-between shadow-xl">
-          <div>
-            <h3 class="text-xl font-bold text-slate-200">Professional Team</h3>
-            <p class="text-slate-400 text-sm mt-1">For growing agile teams with daily CI/CD</p>
-            <p class="text-4xl font-black mt-6">$99 <span class="text-sm font-normal text-slate-400">/mo</span></p>
+        <form id="payment-checkout-form" onsubmit="event.preventDefault();">
+          <div class="space-y-5">
+            <div>
+              <label for="card-holder" class="block text-sm font-semibold text-slate-300 mb-1.5">Cardholder Name</label>
+              <input
+                id="card-holder"
+                type="text"
+                class="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-700 text-white focus:outline-none focus:border-indigo-500 font-medium"
+                value="Ritesh Kumar"
+              />
+            </div>
+
+            <div>
+              <label for="card-number" class="block text-sm font-semibold text-slate-300 mb-1.5">Card Number</label>
+              <input
+                id="card-number"
+                type="text"
+                class="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-700 text-white focus:outline-none focus:border-indigo-500 font-mono tracking-wider"
+                value="4242 4242 4242 4242"
+              />
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label for="card-expiry" class="block text-sm font-semibold text-slate-300 mb-1.5">Valid Thru (MM/YY)</label>
+                <input
+                  id="card-expiry"
+                  type="text"
+                  class="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-700 text-white focus:outline-none focus:border-indigo-500 font-mono"
+                  value="12/28"
+                />
+              </div>
+              <div>
+                <label for="card-cvv" class="block text-sm font-semibold text-slate-300 mb-1.5">CVV / CVC</label>
+                <input
+                  id="card-cvv"
+                  type="password"
+                  maxlength="4"
+                  class="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-700 text-white focus:outline-none focus:border-indigo-500 font-mono"
+                  value="888"
+                />
+              </div>
+            </div>
+
+            <!-- Target Pay Now Action Button -->
+            <button
+              id="pay-now-action-btn"
+              data-testid="complete-payment-button"
+              class="w-full mt-4 py-4 px-6 rounded-xl font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transition cursor-pointer"
+            >
+              <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+              <span>Pay $57.82 Now</span>
+            </button>
           </div>
-          <button class="mt-8 w-full py-3 rounded-xl bg-slate-700 text-slate-300 font-medium cursor-not-allowed opacity-60">Current Plan</button>
-        </div>
+        </form>
 
-        <!-- Enterprise Tier (Refactored Target Button) -->
-        <div class="tier-card p-8 rounded-2xl bg-gradient-to-b from-indigo-950/40 to-slate-900 border-2 border-indigo-500 flex flex-col justify-between shadow-2xl relative">
-          <span class="absolute -top-3.5 right-6 px-3 py-1 rounded-full text-xs font-bold bg-indigo-500 text-white uppercase tracking-wider shadow-md">Recommended</span>
+        <!-- Payment Success Card -->
+        <div id="payment-success-card" class="hidden mt-6 p-5 rounded-2xl bg-emerald-950/60 border border-emerald-500 text-emerald-300 flex items-center gap-4 shadow-xl">
+          <svg class="w-6 h-6 text-emerald-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
           <div>
-            <h3 class="text-xl font-bold text-indigo-300">Enterprise Scale</h3>
-            <p class="text-slate-400 text-sm mt-1">Unlimited self-healing test runs & dedicated VPC</p>
-            <p class="text-4xl font-black mt-6 text-white">$499 <span class="text-sm font-normal text-slate-400">/mo</span></p>
+            <h4 class="font-bold text-base text-white">Payment Received Successfully!</h4>
+            <p class="text-xs text-emerald-400 mt-0.5">Transaction ID: #TXN-9842109 • Order activated.</p>
           </div>
-
-          <!-- The refactored button: old class replaced with modern data-testid & ID -->
-          <button
-            id="enterprise-upgrade-confirm-action"
-            data-testid="complete-enterprise-upgrade-btn"
-            class="mt-8 w-full py-3.5 px-6 rounded-xl font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-2 transition"
-          >
-            <svg class="w-5 h-5 text-indigo-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-            <span>Upgrade to Enterprise Scale</span>
-          </button>
         </div>
-      </section>
-
-      <!-- Confirmation Banner -->
-      <div id="upgrade-success-notification" class="hidden mt-10 p-6 rounded-2xl bg-emerald-950/40 border border-emerald-500 text-emerald-300 flex items-center gap-3">
-        <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-        <span class="font-semibold text-lg">Organization upgraded to Enterprise Scale successfully!</span>
       </div>
     </main>
   </div>
 
   <script>
-    document.getElementById('enterprise-upgrade-confirm-action').addEventListener('click', function() {
-      document.getElementById('upgrade-success-notification').classList.remove('hidden');
+    document.getElementById('pay-now-action-btn').addEventListener('click', function() {
+      document.getElementById('payment-success-card').classList.remove('hidden');
     });
   </script>
 </body>
 </html>`);
   });
 
-  test('should allow user to upgrade to enterprise tier via Page Object Model', async ({ page }) => {
-    const dashboard = new BillingDashboardPage(page);
+  test('should fill payment details and complete checkout successfully', async ({ page }) => {
+    const checkoutPage = new PaymentCheckoutPage(page);
 
-    // Call POM method to click the enterprise upgrade CTA
-    await dashboard.selectEnterpriseTier();
+    // 1. Fill card details
+    await checkoutPage.fillPaymentForm('Ritesh Kumar', '4242 4242 4242 4242');
 
-    // Verify confirmation notification appears
-    await expect(page.locator('#upgrade-success-notification')).toBeVisible({ timeout: 5000 });
+    // 2. Submit payment transaction
+    await checkoutPage.submitPayment();
+
+    // 3. Verify confirmation notification appears
+    await expect(page.locator('#payment-success-card')).toBeVisible({ timeout: 5000 });
   });
 });

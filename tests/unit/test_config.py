@@ -12,7 +12,7 @@ from kernhell.core.config import KernHellConfig, load_config
 def test_default_config() -> None:
     cfg = KernHellConfig()
     assert cfg.llm.provider == "gemini"
-    assert cfg.llm.model == "gemini-3.5-flash"
+    assert cfg.llm.model == "gemini-1.5-flash"
     assert cfg.healing.confidence_threshold == 0.85
     assert cfg.cache.enabled is True
     assert cfg.scanner.browser == "chromium"
@@ -23,12 +23,12 @@ def test_gemini_api_key_resolution(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("GEMINI_API_KEY", "test-gemini-key-12345")
     cfg = KernHellConfig()
     assert cfg.llm.get_resolved_api_key() == "test-gemini-key-12345"
-    assert cfg.llm.get_litellm_model_name() == "gemini/gemini-3.5-flash"
+    assert cfg.llm.get_litellm_model_name() == "gemini/gemini-1.5-flash"
 
 
-def test_gemini_legacy_model_upgrade() -> None:
+def test_gemini_custom_model_preserved() -> None:
     cfg = KernHellConfig(llm={"provider": "gemini", "model": "gemini-2.5-flash"})
-    assert cfg.llm.get_litellm_model_name() == "gemini/gemini-3.5-flash"
+    assert cfg.llm.get_litellm_model_name() == "gemini/gemini-2.5-flash"
 
 
 def test_load_config_with_env_overrides(monkeypatch: pytest.MonkeyPatch) -> None:

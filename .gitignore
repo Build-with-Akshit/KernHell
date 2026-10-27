@@ -84,7 +84,8 @@ playwright/.cache/
 .DS_Store
 Thumbs.db
 
-# Dashboard (Next.js / Node)
+# Node & JavaScript
+node_modules/
 dashboard/node_modules/
 dashboard/.next/
 dashboard/out/
